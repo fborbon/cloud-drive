@@ -1,0 +1,16 @@
+[Unit]
+Description=Cloud Drive Web UI
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/cloud-drive
+ExecStart=/home/ubuntu/cloud-drive/venv/bin/streamlit run web_app.py
+Restart=on-failure
+RestartSec=5
+Environment=AWS_DEFAULT_REGION=us-east-1
+Environment=CLOUD_DRIVE_API_URL=https://drive.forwardforecasting.eu/cloud-api
+
+[Install]
+WantedBy=multi-user.target

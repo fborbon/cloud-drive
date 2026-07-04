@@ -1,0 +1,10 @@
+[server]
+port = 8505
+headless = true
+fileWatcherType = "none"
+
+[browser]
+gatherUsageStats = false
+
+[theme]
+base = "dark"

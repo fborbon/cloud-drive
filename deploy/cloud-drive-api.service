@@ -1,0 +1,15 @@
+[Unit]
+Description=Cloud Drive Pre-signed URL API
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/cloud-drive
+ExecStart=/home/ubuntu/cloud-drive/venv/bin/python /home/ubuntu/cloud-drive/api.py
+Restart=on-failure
+RestartSec=5
+Environment=AWS_DEFAULT_REGION=us-east-1
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,33 @@
+bucket: my-cloud-drive-backup
+
+# Default storage class for new uploads.
+# Options: STANDARD | INTELLIGENT_TIERING | STANDARD_IA | ONEZONE_IA |
+#          GLACIER_IR | GLACIER | DEEP_ARCHIVE
+default_storage_class: GLACIER_IR
+
+# Per-folder overrides — use STANDARD for folders you access daily,
+# leave everything else on GLACIER_IR (the default above).
+# Example:
+# storage_rules:
+#   - prefix: "Work/Active/"
+#     storage_class: STANDARD
+
+# S3 key prefix — all files land under this in your bucket
+s3_prefix: "hd-backup"
+
+# Path to the local SQLite index file
+index_db: "~/.cloud-drive/index.db"
+
+# Number of parallel upload threads
+threads: 4
+
+# Minimum file size (bytes) to use multipart upload (default 100 MB)
+multipart_threshold: 104857600
+
+# File/directory patterns to always skip
+exclude:
+  - "**/.DS_Store"
+  - "**/Thumbs.db"
+  - "**/*.tmp"
+  - "**/.Spotlight-*"
+  - "**/.Trashes"
