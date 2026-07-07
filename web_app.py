@@ -703,9 +703,12 @@ with tab_media:
 <style>
 *,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
 html,body{{height:100%;overflow:hidden}}
-body{{display:flex;background:#181818;color:#ccc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px}}
+body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px}}
 
-#rail{{width:240px;min-width:140px;max-width:480px;background:#101010;border-right:1px solid #1c1c1c;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}}
+/* ── Top browser panel ──────────────────────────────── */
+#browser{{display:flex;flex-direction:row;height:45%;min-height:60px;flex-shrink:0;overflow:hidden}}
+
+#rail{{width:240px;min-width:100px;max-width:480px;background:#101010;border-right:1px solid #1c1c1c;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}}
 #rail-header{{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:#f97316;padding:.7rem .8rem .3rem;font-weight:700;flex-shrink:0}}
 #rail-search{{display:block;width:calc(100% - 1rem);margin:.2rem .5rem .3rem;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:5px;color:#ccc;font-size:.75rem;padding:.3rem .5rem;outline:none;flex-shrink:0}}
 #rail-search:focus{{border-color:#f97316}}
@@ -721,18 +724,30 @@ body{{display:flex;background:#181818;color:#ccc;font-family:-apple-system,Blink
 .tree-label{{font-size:.78rem;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}}
 .tree-count{{font-size:.62rem;color:#444;flex-shrink:0}}
 
-#resize{{width:5px;cursor:col-resize;background:transparent;flex-shrink:0;transition:background .15s;touch-action:none}}
-#resize:hover,#resize.drag{{background:#f97316}}
+/* vertical drag handle (inside browser panel) */
+#v-resize{{width:5px;cursor:col-resize;background:transparent;flex-shrink:0;transition:background .15s;touch-action:none}}
+#v-resize:hover,#v-resize.drag{{background:#f97316}}
 
-@media(max-width:600px){{
-  #rail{{width:90px!important;min-width:70px}}
-  #pl-panel{{width:100px!important;min-width:70px}}
-  .tree-label,.pl-name{{font-size:.65rem}}
-  .tree-count,.pl-idx{{display:none}}
-  #player-audio{{width:100px}}
-}}
+#pl-panel{{flex:1;min-width:100px;background:#101010;display:flex;flex-direction:column;overflow:hidden}}
+#pl-header{{padding:.6rem .7rem .3rem;flex-shrink:0;border-bottom:1px solid #141414}}
+#pl-title{{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:#f97316;font-weight:700}}
+#pl-count{{font-size:.67rem;color:#333;margin-top:2px}}
+#pl-list{{flex:1;overflow-y:auto}}
+.pl-item{{display:flex;align-items:center;gap:.45rem;padding:.32rem .55rem;cursor:pointer;transition:background .1s;border-bottom:1px solid #111}}
+.pl-item:hover{{background:rgba(255,255,255,.04)}}
+.pl-item.current{{background:rgba(249,115,22,.1);border-left:2px solid #f97316}}
+.pl-item.current .pl-name{{color:#f97316;font-weight:600}}
+.pl-idx{{font-size:.6rem;color:#2a2a2a;width:20px;text-align:right;flex-shrink:0;font-family:ui-monospace,monospace}}
+.pl-type{{font-size:.75rem;flex-shrink:0}}
+.pl-name{{font-size:.73rem;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}}
+.pl-empty{{color:#2a2a2a;font-size:.77rem;padding:1rem .7rem;line-height:1.7}}
 
-#main{{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}}
+/* ── Horizontal drag handle ─────────────────────────── */
+#h-resize{{height:6px;cursor:row-resize;background:transparent;flex-shrink:0;border-top:1px solid #1c1c1c;border-bottom:1px solid #1c1c1c;transition:background .15s;touch-action:none}}
+#h-resize:hover,#h-resize.drag{{background:#f97316}}
+
+/* ── Bottom player panel ────────────────────────────── */
+#main{{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}}
 
 #now-playing{{padding:.45rem .8rem;border-bottom:1px solid #1c1c1c;flex-shrink:0;display:flex;align-items:center;gap:.6rem;min-height:38px}}
 #np-icon{{font-size:1rem;flex-shrink:0}}
@@ -746,7 +761,7 @@ body{{display:flex;background:#181818;color:#ccc;font-family:-apple-system,Blink
 #player-img{{max-width:100%;max-height:100%;object-fit:contain;display:none}}
 #player-audio-wrap{{display:none;flex-direction:column;align-items:center;gap:1.5rem;padding:2.5rem}}
 #player-audio-art{{font-size:4.5rem;line-height:1}}
-#player-audio{{width:300px}}
+#player-audio{{width:min(300px,90%)}}
 #player-empty{{color:#2a2a2a;font-size:.9rem;text-align:center;padding:2rem;line-height:2.2}}
 #player-loading{{display:none;position:absolute;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;color:#555;font-size:.82rem}}
 
@@ -769,31 +784,29 @@ body{{display:flex;background:#181818;color:#ccc;font-family:-apple-system,Blink
 #volume-wrap{{display:flex;align-items:center;gap:.4rem;margin-left:auto}}
 #volume{{width:75px;accent-color:#f97316;cursor:pointer}}
 #slideshow-speed{{background:#1e1e1e;border:1px solid #2a2a2a;color:#aaa;border-radius:4px;font-size:.73rem;padding:.22rem .35rem;cursor:pointer;outline:none}}
-
-#pl-panel{{width:260px;min-width:160px;background:#101010;border-left:1px solid #1c1c1c;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}}
-#pl-header{{padding:.6rem .7rem .3rem;flex-shrink:0;border-bottom:1px solid #141414}}
-#pl-title{{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:#f97316;font-weight:700}}
-#pl-count{{font-size:.67rem;color:#333;margin-top:2px}}
-#pl-list{{flex:1;overflow-y:auto}}
-.pl-item{{display:flex;align-items:center;gap:.45rem;padding:.32rem .55rem;cursor:pointer;transition:background .1s;border-bottom:1px solid #111}}
-.pl-item:hover{{background:rgba(255,255,255,.04)}}
-.pl-item.current{{background:rgba(249,115,22,.1);border-left:2px solid #f97316}}
-.pl-item.current .pl-name{{color:#f97316;font-weight:600}}
-.pl-idx{{font-size:.6rem;color:#2a2a2a;width:20px;text-align:right;flex-shrink:0;font-family:ui-monospace,monospace}}
-.pl-type{{font-size:.75rem;flex-shrink:0}}
-.pl-name{{font-size:.73rem;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}}
-.pl-empty{{color:#2a2a2a;font-size:.77rem;padding:1rem .7rem;line-height:1.7}}
 </style>
 </head>
 <body>
 
-<div id="rail">
-  <div id="rail-header">📁 Folders</div>
-  <input id="rail-search" type="text" placeholder="Filter folders…">
-  <div id="tree"></div>
+<div id="browser">
+  <div id="rail">
+    <div id="rail-header">📁 Folders</div>
+    <input id="rail-search" type="text" placeholder="Filter folders…">
+    <div id="tree"></div>
+  </div>
+
+  <div id="v-resize"></div>
+
+  <div id="pl-panel">
+    <div id="pl-header">
+      <div id="pl-title">Playlist</div>
+      <div id="pl-count">No folder selected</div>
+    </div>
+    <div id="pl-list"><div class="pl-empty">Select a folder from the tree to populate the playlist.</div></div>
+  </div>
 </div>
 
-<div id="resize"></div>
+<div id="h-resize"></div>
 
 <div id="main">
   <div id="now-playing">
@@ -812,7 +825,7 @@ body{{display:flex;background:#181818;color:#ccc;font-family:-apple-system,Blink
       <div id="player-audio-art">🎵</div>
       <audio id="player-audio" controls></audio>
     </div>
-    <div id="player-empty">📂 Open a folder from the left panel<br>to load its media as a playlist</div>
+    <div id="player-empty">📂 Select a folder above, then pick a file to play</div>
     <div id="player-loading">⏳ Loading…</div>
     <button class="img-nav" id="img-prev">&#8249;</button>
     <button class="img-nav" id="img-next">&#8250;</button>
@@ -824,9 +837,9 @@ body{{display:flex;background:#181818;color:#ccc;font-family:-apple-system,Blink
     <button class="ctrl-btn" id="btn-play" disabled>⏸</button>
     <button class="ctrl-btn" id="btn-next" disabled>⏭</button>
     <div class="ctrl-sep"></div>
-    <button class="ctrl-btn"     id="btn-autoplay">⏩ Auto</button>
-    <button class="ctrl-btn"     id="btn-shuffle">🔀 Shuffle</button>
-    <button class="ctrl-btn"     id="btn-loop">🔁 Loop</button>
+    <button class="ctrl-btn" id="btn-autoplay">⏩ Auto</button>
+    <button class="ctrl-btn" id="btn-shuffle">🔀 Shuffle</button>
+    <button class="ctrl-btn" id="btn-loop">🔁 Loop</button>
     <div class="ctrl-sep"></div>
     <span class="ctrl-lbl">🖼 Slide</span>
     <select id="slideshow-speed">
@@ -840,14 +853,6 @@ body{{display:flex;background:#181818;color:#ccc;font-family:-apple-system,Blink
       <input type="range" id="volume" min="0" max="1" step="0.05" value="0.8">
     </div>
   </div>
-</div>
-
-<div id="pl-panel">
-  <div id="pl-header">
-    <div id="pl-title">Playlist</div>
-    <div id="pl-count">No folder selected</div>
-  </div>
-  <div id="pl-list"><div class="pl-empty">Select a folder from the tree to populate the playlist.</div></div>
 </div>
 
 <script>
@@ -1125,17 +1130,32 @@ document.addEventListener('keydown',e=>{{
   }}
 }});
 
-const handle=document.getElementById('resize'),rail=document.getElementById('rail');
-let drag=false,sx=0,sw=0;
-function startDrag(x){{drag=true;sx=x;sw=rail.offsetWidth;handle.classList.add('drag');document.body.style.cssText='cursor:col-resize;user-select:none';}}
-function moveDrag(x){{if(!drag)return;rail.style.width=Math.max(60,Math.min(480,sw+x-sx))+'px';}}
-function endDrag(){{drag=false;handle.classList.remove('drag');document.body.style.cssText='';}}
-handle.addEventListener('mousedown',e=>{{startDrag(e.clientX);e.preventDefault();}});
-document.addEventListener('mousemove',e=>moveDrag(e.clientX));
-document.addEventListener('mouseup',endDrag);
-handle.addEventListener('touchstart',e=>{{startDrag(e.touches[0].clientX);e.preventDefault();}},{{passive:false}});
-document.addEventListener('touchmove',e=>{{if(drag){{moveDrag(e.touches[0].clientX);e.preventDefault();}}}},{{passive:false}});
-document.addEventListener('touchend',endDrag);
+// ── Vertical resize (folder tree ↔ playlist) ────────────────────────────────
+const vHandle=document.getElementById('v-resize'),rail=document.getElementById('rail');
+let vDrag=false,vSX=0,vSW=0;
+function startVDrag(x){{vDrag=true;vSX=x;vSW=rail.offsetWidth;vHandle.classList.add('drag');document.body.style.cssText='cursor:col-resize;user-select:none';}}
+function moveVDrag(x){{if(!vDrag)return;rail.style.width=Math.max(60,Math.min(480,vSW+x-vSX))+'px';}}
+function endVDrag(){{vDrag=false;vHandle.classList.remove('drag');document.body.style.cssText='';}}
+vHandle.addEventListener('mousedown',e=>{{startVDrag(e.clientX);e.preventDefault();}});
+document.addEventListener('mousemove',e=>moveVDrag(e.clientX));
+document.addEventListener('mouseup',endVDrag);
+vHandle.addEventListener('touchstart',e=>{{startVDrag(e.touches[0].clientX);e.preventDefault();}},{{passive:false}});
+document.addEventListener('touchmove',e=>{{
+  if(vDrag){{moveVDrag(e.touches[0].clientX);e.preventDefault();}}
+  if(hDrag){{moveHDrag(e.touches[0].clientY);e.preventDefault();}}
+}},{{passive:false}});
+document.addEventListener('touchend',()=>{{endVDrag();endHDrag();}});
+
+// ── Horizontal resize (browser ↔ player) ────────────────────────────────────
+const hHandle=document.getElementById('h-resize'),browser=document.getElementById('browser');
+let hDrag=false,hSY=0,hSH=0;
+function startHDrag(y){{hDrag=true;hSY=y;hSH=browser.offsetHeight;hHandle.classList.add('drag');document.body.style.cssText='cursor:row-resize;user-select:none';}}
+function moveHDrag(y){{if(!hDrag)return;browser.style.height=Math.max(60,Math.min(window.innerHeight-80,hSH+y-hSY))+'px';}}
+function endHDrag(){{hDrag=false;hHandle.classList.remove('drag');document.body.style.cssText='';}}
+hHandle.addEventListener('mousedown',e=>{{startHDrag(e.clientY);e.preventDefault();}});
+document.addEventListener('mousemove',e=>moveHDrag(e.clientY));
+document.addEventListener('mouseup',endHDrag);
+hHandle.addEventListener('touchstart',e=>{{startHDrag(e.touches[0].clientY);e.preventDefault();}},{{passive:false}});
 
 renderTree();
 </script>
