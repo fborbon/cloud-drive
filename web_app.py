@@ -742,9 +742,9 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
 .pl-name{{font-size:.73rem;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}}
 .pl-empty{{color:#2a2a2a;font-size:.77rem;padding:1rem .7rem;line-height:1.7}}
 
-/* ── Horizontal drag handle ─────────────────────────── */
-#h-resize{{height:6px;cursor:row-resize;background:transparent;flex-shrink:0;border-top:1px solid #1c1c1c;border-bottom:1px solid #1c1c1c;transition:background .15s;touch-action:none}}
-#h-resize:hover,#h-resize.drag{{background:#f97316}}
+/* ── Horizontal drag handles ────────────────────────── */
+#h-resize,#b-resize{{height:6px;cursor:row-resize;background:transparent;flex-shrink:0;border-top:1px solid #1c1c1c;border-bottom:1px solid #1c1c1c;transition:background .15s;touch-action:none}}
+#h-resize:hover,#h-resize.drag,#b-resize:hover,#b-resize.drag{{background:#f97316}}
 
 /* ── Bottom player panel ────────────────────────────── */
 #main{{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}}
@@ -854,6 +854,8 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
     </div>
   </div>
 </div>
+
+<div id="b-resize"></div>
 
 <script>
 const API  = '{API_URL}';
@@ -1140,11 +1142,6 @@ vHandle.addEventListener('mousedown',e=>{{startVDrag(e.clientX);e.preventDefault
 document.addEventListener('mousemove',e=>moveVDrag(e.clientX));
 document.addEventListener('mouseup',endVDrag);
 vHandle.addEventListener('touchstart',e=>{{startVDrag(e.touches[0].clientX);e.preventDefault();}},{{passive:false}});
-document.addEventListener('touchmove',e=>{{
-  if(vDrag){{moveVDrag(e.touches[0].clientX);e.preventDefault();}}
-  if(hDrag){{moveHDrag(e.touches[0].clientY);e.preventDefault();}}
-}},{{passive:false}});
-document.addEventListener('touchend',()=>{{endVDrag();endHDrag();}});
 
 // ── Horizontal resize (browser ↔ player) ────────────────────────────────────
 const hHandle=document.getElementById('h-resize'),browser=document.getElementById('browser');
@@ -1157,28 +1154,54 @@ document.addEventListener('mousemove',e=>moveHDrag(e.clientY));
 document.addEventListener('mouseup',endHDrag);
 hHandle.addEventListener('touchstart',e=>{{startHDrag(e.touches[0].clientY);e.preventDefault();}},{{passive:false}});
 
+// ── Bottom resize (drag total iframe height) ─────────────────────────────────
+const bHandle=document.getElementById('b-resize');
+let bDrag=false,bSY=0,bSH=0;
+function startBDrag(y){{
+  bDrag=true;bSY=y;
+  try{{bSH=window.frameElement.offsetHeight;}}catch(e){{bSH=720;}}
+  bHandle.classList.add('drag');document.body.style.cssText='cursor:row-resize;user-select:none';
+}}
+function moveBDrag(y){{
+  if(!bDrag)return;
+  const newH=Math.max(200,bSH+y-bSY);
+  try{{const el=window.frameElement;el.style.height=newH+'px';if(el.parentElement)el.parentElement.style.height=newH+'px';}}catch(e){{}}
+}}
+function endBDrag(){{bDrag=false;bHandle.classList.remove('drag');document.body.style.cssText='';}}
+bHandle.addEventListener('mousedown',e=>{{startBDrag(e.clientY);e.preventDefault();}});
+document.addEventListener('mousemove',e=>moveBDrag(e.clientY));
+document.addEventListener('mouseup',endBDrag);
+bHandle.addEventListener('touchstart',e=>{{startBDrag(e.touches[0].clientY);e.preventDefault();}},{{passive:false}});
+
+document.addEventListener('touchmove',e=>{{
+  if(vDrag){{moveVDrag(e.touches[0].clientX);e.preventDefault();}}
+  if(hDrag){{moveHDrag(e.touches[0].clientY);e.preventDefault();}}
+  if(bDrag){{moveBDrag(e.touches[0].clientY);e.preventDefault();}}
+}},{{passive:false}});
+document.addEventListener('touchend',()=>{{endVDrag();endHDrag();endBDrag();}});
+
 renderTree();
 
-// ── Fit iframe to remaining viewport height ──────────────────────────────────
+// ── Fit iframe to remaining viewport height (skipped after manual b-resize) ──
+let _manualResize=false;
+bHandle.addEventListener('mousedown',()=>{{_manualResize=true;}});
+bHandle.addEventListener('touchstart',()=>{{_manualResize=true;}},{{passive:true}});
 (function fitToViewport() {{
+  if(_manualResize) return;
   try {{
-    const el = window.frameElement;
-    if (!el) return;
-    const parentWin = window.parent;
-    const rect = el.getBoundingClientRect();
-    const newH = Math.max(300, parentWin.innerHeight - rect.top - 4);
-    el.style.height = newH + 'px';
-    if (el.parentElement) el.parentElement.style.height = newH + 'px';
+    const el=window.frameElement; if(!el) return;
+    const rect=el.getBoundingClientRect();
+    const newH=Math.max(300,window.parent.innerHeight-rect.top-4);
+    el.style.height=newH+'px'; if(el.parentElement) el.parentElement.style.height=newH+'px';
   }} catch(e) {{}}
 }})();
-window.parent.addEventListener('resize', function() {{
+window.parent.addEventListener('resize',function() {{
+  if(_manualResize) return;
   try {{
-    const el = window.frameElement;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    const newH = Math.max(300, window.parent.innerHeight - rect.top - 4);
-    el.style.height = newH + 'px';
-    if (el.parentElement) el.parentElement.style.height = newH + 'px';
+    const el=window.frameElement; if(!el) return;
+    const rect=el.getBoundingClientRect();
+    const newH=Math.max(300,window.parent.innerHeight-rect.top-4);
+    el.style.height=newH+'px'; if(el.parentElement) el.parentElement.style.height=newH+'px';
   }} catch(e) {{}}
 }});
 </script>
