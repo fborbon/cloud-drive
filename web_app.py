@@ -742,9 +742,9 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
 .pl-name{{font-size:.73rem;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}}
 .pl-empty{{color:#2a2a2a;font-size:.77rem;padding:1rem .7rem;line-height:1.7}}
 
-/* ── Horizontal drag handles ────────────────────────── */
-#h-resize,#b-resize{{height:6px;cursor:row-resize;background:transparent;flex-shrink:0;border-top:1px solid #1c1c1c;border-bottom:1px solid #1c1c1c;transition:background .15s;touch-action:none}}
-#h-resize:hover,#h-resize.drag,#b-resize:hover,#b-resize.drag{{background:#f97316}}
+/* ── Horizontal drag handle (browser ↔ player) ──────── */
+#h-resize{{height:6px;cursor:row-resize;background:transparent;flex-shrink:0;border-top:1px solid #1c1c1c;border-bottom:1px solid #1c1c1c;transition:background .15s;touch-action:none}}
+#h-resize:hover,#h-resize.drag{{background:#f97316}}
 
 /* ── Bottom player panel ────────────────────────────── */
 #main{{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}}
@@ -781,16 +781,17 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
 #img-prev{{left:.6rem}}
 #img-next{{right:.6rem}}
 
-#controls{{display:flex;align-items:center;gap:.4rem;padding:.45rem .7rem;border-top:1px solid #1c1c1c;flex-shrink:0;flex-wrap:wrap}}
-.ctrl-btn{{background:#1e1e1e;border:1px solid #2a2a2a;color:#aaa;padding:.28rem .65rem;border-radius:4px;cursor:pointer;font-size:.8rem;transition:all .15s;white-space:nowrap}}
+#controls{{display:flex;align-items:center;gap:.35rem;padding:.35rem .5rem;border-top:1px solid #1c1c1c;flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}}
+#controls::-webkit-scrollbar{{display:none}}
+.ctrl-btn{{background:#1e1e1e;border:1px solid #2a2a2a;color:#aaa;padding:.25rem .5rem;border-radius:4px;cursor:pointer;font-size:.78rem;transition:all .15s;white-space:nowrap;flex-shrink:0}}
 .ctrl-btn:hover{{background:#282828;color:#eee}}
 .ctrl-btn.on{{background:rgba(249,115,22,.15);border-color:#f97316;color:#f97316}}
 .ctrl-btn:disabled{{opacity:.3;cursor:default}}
-.ctrl-sep{{width:1px;height:18px;background:#252525;flex-shrink:0}}
-.ctrl-lbl{{font-size:.68rem;color:#444}}
-#volume-wrap{{display:flex;align-items:center;gap:.4rem;margin-left:auto}}
-#volume{{width:75px;accent-color:#f97316;cursor:pointer}}
-#slideshow-speed{{background:#1e1e1e;border:1px solid #2a2a2a;color:#aaa;border-radius:4px;font-size:.73rem;padding:.22rem .35rem;cursor:pointer;outline:none}}
+.ctrl-sep{{width:1px;height:16px;background:#252525;flex-shrink:0}}
+.ctrl-lbl{{font-size:.65rem;color:#444;flex-shrink:0}}
+#volume-wrap{{display:flex;align-items:center;gap:.35rem;margin-left:auto;flex-shrink:0}}
+#volume{{width:65px;accent-color:#f97316;cursor:pointer}}
+#slideshow-speed{{background:#1e1e1e;border:1px solid #2a2a2a;color:#aaa;border-radius:4px;font-size:.72rem;padding:.2rem .3rem;cursor:pointer;outline:none;flex-shrink:0}}
 </style>
 </head>
 <body>
@@ -867,8 +868,6 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
     </div>
   </div>
 </div>
-
-<div id="b-resize"></div>
 
 <script>
 const API  = '{API_URL}';
@@ -1205,40 +1204,14 @@ document.addEventListener('mousemove',e=>moveHDrag(e.clientY));
 document.addEventListener('mouseup',endHDrag);
 hHandle.addEventListener('touchstart',e=>{{startHDrag(e.touches[0].clientY);e.preventDefault();}},{{passive:false}});
 
-// ── Bottom resize (drag total iframe height) ─────────────────────────────────
-const bHandle=document.getElementById('b-resize');
-let bDrag=false,bSY=0,bSH=0;
-function startBDrag(y){{
-  bDrag=true;bSY=y;
-  try{{bSH=window.frameElement.offsetHeight;}}catch(e){{bSH=720;}}
-  bHandle.classList.add('drag');document.body.style.cssText='cursor:row-resize;user-select:none';
-}}
-function moveBDrag(y){{
-  if(!bDrag)return;
-  const newH=Math.max(200,bSH+y-bSY);
-  try{{const el=window.frameElement;el.style.height=newH+'px';if(el.parentElement)el.parentElement.style.height=newH+'px';}}catch(e){{}}
-}}
-function endBDrag(){{bDrag=false;bHandle.classList.remove('drag');document.body.style.cssText='';}}
-bHandle.addEventListener('mousedown',e=>{{startBDrag(e.clientY);e.preventDefault();}});
-document.addEventListener('mousemove',e=>moveBDrag(e.clientY));
-document.addEventListener('mouseup',endBDrag);
-bHandle.addEventListener('touchstart',e=>{{startBDrag(e.touches[0].clientY);e.preventDefault();}},{{passive:false}});
-
 document.addEventListener('touchmove',e=>{{
   if(vDrag){{moveVDrag(e.touches[0].clientX);e.preventDefault();}}
   if(hDrag){{moveHDrag(e.touches[0].clientY);e.preventDefault();}}
-  if(bDrag){{moveBDrag(e.touches[0].clientY);e.preventDefault();}}
 }},{{passive:false}});
-document.addEventListener('touchend',()=>{{endVDrag();endHDrag();endBDrag();}});
+document.addEventListener('touchend',()=>{{endVDrag();endHDrag();}});
 
 renderTree();
-
-// ── Fit iframe to remaining viewport height (skipped after manual b-resize) ──
-let _manualResize=false;
-bHandle.addEventListener('mousedown',()=>{{_manualResize=true;}});
-bHandle.addEventListener('touchstart',()=>{{_manualResize=true;}},{{passive:true}});
 function fitToViewport() {{
-  if(_manualResize) return;
   try {{
     const el=window.frameElement; if(!el) return;
     const pWin=window.parent; const pDoc=pWin.document;
