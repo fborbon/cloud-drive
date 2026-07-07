@@ -785,7 +785,7 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
 #img-prev{{left:.6rem}}
 #img-next{{right:.6rem}}
 
-#controls{{display:flex;align-items:center;gap:.35rem;padding:.35rem .5rem;border-top:1px solid #1c1c1c;flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}}
+#controls{{display:flex;align-items:center;gap:.35rem;padding:.35rem .5rem;border-bottom:1px solid #1c1c1c;flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}}
 #controls::-webkit-scrollbar{{display:none}}
 .ctrl-btn{{background:#1e1e1e;border:1px solid #2a2a2a;color:#aaa;padding:.25rem .5rem;border-radius:4px;cursor:pointer;font-size:.78rem;transition:all .15s;white-space:nowrap;flex-shrink:0}}
 .ctrl-btn:hover{{background:#282828;color:#eee}}
@@ -799,6 +799,28 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
 </style>
 </head>
 <body>
+
+<div id="controls">
+  <button class="ctrl-btn" id="btn-prev" disabled>⏮</button>
+  <button class="ctrl-btn" id="btn-play" disabled>⏸</button>
+  <button class="ctrl-btn" id="btn-next" disabled>⏭</button>
+  <div class="ctrl-sep"></div>
+  <button class="ctrl-btn" id="btn-autoplay">⏩ Auto</button>
+  <button class="ctrl-btn" id="btn-shuffle">🔀 Shuffle</button>
+  <button class="ctrl-btn" id="btn-loop">🔁 Loop</button>
+  <div class="ctrl-sep"></div>
+  <span class="ctrl-lbl">🖼 Slide</span>
+  <select id="slideshow-speed">
+    <option value="3">3 s</option>
+    <option value="5" selected>5 s</option>
+    <option value="10">10 s</option>
+    <option value="20">20 s</option>
+  </select>
+  <div id="volume-wrap">
+    <span class="ctrl-lbl">🔊</span>
+    <input type="range" id="volume" min="0" max="1" step="0.05" value="0.8">
+  </div>
+</div>
 
 <div id="browser">
   <div id="rail">
@@ -850,28 +872,6 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
     <div id="img-progress-wrap"><div id="img-progress-bar"></div></div>
   </div><!-- /#player-area -->
 </div><!-- /#main -->
-
-<div id="controls">
-  <button class="ctrl-btn" id="btn-prev" disabled>⏮</button>
-  <button class="ctrl-btn" id="btn-play" disabled>⏸</button>
-  <button class="ctrl-btn" id="btn-next" disabled>⏭</button>
-  <div class="ctrl-sep"></div>
-  <button class="ctrl-btn" id="btn-autoplay">⏩ Auto</button>
-  <button class="ctrl-btn" id="btn-shuffle">🔀 Shuffle</button>
-  <button class="ctrl-btn" id="btn-loop">🔁 Loop</button>
-  <div class="ctrl-sep"></div>
-  <span class="ctrl-lbl">🖼 Slide</span>
-  <select id="slideshow-speed">
-    <option value="3">3 s</option>
-    <option value="5" selected>5 s</option>
-    <option value="10">10 s</option>
-    <option value="20">20 s</option>
-  </select>
-  <div id="volume-wrap">
-    <span class="ctrl-lbl">🔊</span>
-    <input type="range" id="volume" min="0" max="1" step="0.05" value="0.8">
-  </div>
-</div>
 
 <script>
 const API  = '{API_URL}';
