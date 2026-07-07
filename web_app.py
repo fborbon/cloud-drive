@@ -391,6 +391,12 @@ async function viewFile(key, name) {{
     }} else if(AUD_EXT.has(ext)) {{
       body=`<audio src="${{esc(url)}}" controls autoplay></audio>`;
     }} else if(PDF_EXT.has(ext)) {{
+      const isMobile = window.innerWidth <= 768 || navigator.maxTouchPoints > 0;
+      if(isMobile) {{
+        window.open(url, '_blank');
+        closeModal();
+        return;
+      }}
       body=`<iframe src="${{esc(url)}}"></iframe>`;
     }} else if(TXT_EXT.has(ext)) {{
       openModal(name, '<div class="modal-msg modal-loading">⏳ Loading…</div>', async()=>{{window.open(await presign(key,true),'_blank');}});
