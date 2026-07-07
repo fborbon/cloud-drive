@@ -725,7 +725,39 @@ body{{display:flex;background:#181818;color:#ccc;font-family:-apple-system,Blink
 
 #resize{{width:5px;cursor:col-resize;background:transparent;flex-shrink:0;transition:background .15s;touch-action:none}}
 #resize:hover,#resize.drag{{background:#f97316}}
-@media(max-width:768px){{#resize{{width:16px;background:rgba(249,115,22,.15)}}}}
+
+@media(max-width:768px){{
+  /* Stack layout vertically */
+  body{{flex-direction:column}}
+  #resize{{display:none}}
+  #player-audio{{width:90vw;max-width:340px}}
+  /* Rail becomes full-screen overlay, hidden by default */
+  #rail{{
+    display:none;position:fixed;inset:0;z-index:200;
+    width:100%!important;max-width:100%;
+    background:#101010;flex-direction:column;
+  }}
+  #rail.mob-open{{display:flex}}
+  /* Overlay backdrop */
+  #mob-backdrop{{display:none;position:fixed;inset:0;z-index:199;background:rgba(0,0,0,.6)}}
+  #mob-backdrop.mob-open{{display:block}}
+  /* Folder button in now-playing bar */
+  #mob-folder-btn{{display:flex}}
+  /* Close button inside rail header */
+  #rail-close-btn{{display:flex}}
+  /* Playlist stacks below the player, full width */
+  #pl-panel{{
+    width:100%!important;min-width:unset;
+    border-left:none;border-top:1px solid #1c1c1c;
+    height:220px;flex-shrink:0;
+  }}
+  #main{{flex:1 0 0;min-height:0}}
+}}
+@media(min-width:769px){{
+  #mob-folder-btn{{display:none}}
+  #rail-close-btn{{display:none}}
+  #mob-backdrop{{display:none!important}}
+}}
 
 #main{{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}}
 
@@ -782,8 +814,13 @@ body{{display:flex;background:#181818;color:#ccc;font-family:-apple-system,Blink
 </head>
 <body>
 
+<div id="mob-backdrop" onclick="closeMobRail()"></div>
+
 <div id="rail">
-  <div id="rail-header">📁 Folders</div>
+  <div id="rail-header" style="display:flex;align-items:center;justify-content:space-between">
+    <span>📁 Folders</span>
+    <button id="rail-close-btn" onclick="closeMobRail()" style="background:none;border:none;color:#555;font-size:1.1rem;cursor:pointer;padding:0 .3rem;line-height:1">✕</button>
+  </div>
   <input id="rail-search" type="text" placeholder="Filter folders…">
   <div id="tree"></div>
 </div>
@@ -792,9 +829,10 @@ body{{display:flex;background:#181818;color:#ccc;font-family:-apple-system,Blink
 
 <div id="main">
   <div id="now-playing">
+    <button id="mob-folder-btn" class="ctrl-btn" onclick="openMobRail()" style="font-size:.75rem;padding:.2rem .5rem;margin-right:.3rem">📁</button>
     <span id="np-icon">🎵</span>
     <div id="np-info">
-      <div id="np-name" style="color:#2a2a2a">Select a folder to start playing</div>
+      <div id="np-name" style="color:#2a2a2a">Tap 📁 to select a folder</div>
       <div id="np-meta"></div>
     </div>
     <span id="np-pos"></span>
@@ -853,9 +891,18 @@ const IMG = new Set(['jpg','jpeg','png','gif','webp','bmp','avif','tiff','tif','
 const VID = new Set(['mp4','mov','m4v','webm','mkv','avi','3gp','ogv']);
 const AUD = new Set(['mp3','wav','m4a','ogg','flac','aac','opus','wma']);
 
+function openMobRail(){{
+  document.getElementById('rail').classList.add('mob-open');
+  document.getElementById('mob-backdrop').classList.add('mob-open');
+}}
+function closeMobRail(){{
+  document.getElementById('rail').classList.remove('mob-open');
+  document.getElementById('mob-backdrop').classList.remove('mob-open');
+}}
+
 function ext(name){{const i=name.lastIndexOf('.');return i>=0?name.slice(i+1).toLowerCase():'';}}
 function mtype(name){{const e=ext(name);return IMG.has(e)?'img':VID.has(e)?'vid':AUD.has(e)?'aud':null;}}
-function ticon(t,name){{if(t==='img')return '🖼';if(t==='vid')return '🎬';if(t==='aud')return name&&isWma(name)?'🔄':'🎵';return '📄';}}
+function ticon(t,name){{if(t==='img')return '🖼';if(t==='vid')return '🎬';if(t==='aud')return name&&needsTranscode(name)?'🔄':'🎵';return '📄';}}
 function sortedKeys(o){{return Object.keys(o).sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));}}
 function ps(parts){{return parts.join('/');}}
 function esc(s){{return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}}
@@ -1063,6 +1110,7 @@ function mkNode(parentPath,name,depth){{
     for(let i=1;i<parts.length;i++) S.expanded.add(parts.slice(0,i).join('/'));
     selectFolder(fullPath.split('/'));
     renderTree();
+    closeMobRail();
   }});
   wrap.appendChild(row);
   if(expanded&&hasKids) for(const k of sortedKeys(node.dirs)) wrap.appendChild(mkNode(fullPath,k,depth+1));
