@@ -10,8 +10,8 @@ ExecStart=/home/ubuntu/cloud-drive/venv/bin/python /home/ubuntu/cloud-drive/api.
 Restart=on-failure
 RestartSec=5
 Environment=AWS_DEFAULT_REGION=us-east-1
-Environment=CLOUD_DRIVE_USERNAME=admin
-Environment=CLOUD_DRIVE_PASSWORD=vryKly0IEbkf1xZFiLu8
+Environment=CLOUD_DRIVE_USERNAME=ferborbon77
+Environment=CLOUD_DRIVE_PASSWORD=My_drive_2026
 
 [Install]
 WantedBy=multi-user.target
