@@ -313,6 +313,23 @@ const AUD_EXT = new Set(['mp3','wav','m4a','ogg','flac','aac','opus','wma']);
 const PDF_EXT = new Set(['pdf']);
 const TXT_EXT = new Set(['txt','md','json','xml','csv','log','yaml','yml','ini','toml','sh','bash','py','js','ts','jsx','tsx','html','css','scss','sql','conf','cfg','env','gitignore','dockerfile','makefile','rs','go','java','c','cpp','h','rb','php']);
 
+let _pdfjsLib = null;
+function _loadPdfJs() {{
+  if(_pdfjsLib) return Promise.resolve(_pdfjsLib);
+  return new Promise((resolve, reject) => {{
+    const s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+    s.onload = () => {{
+      window.pdfjsLib.GlobalWorkerOptions.workerSrc =
+        'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+      _pdfjsLib = window.pdfjsLib;
+      resolve(_pdfjsLib);
+    }};
+    s.onerror = () => reject(new Error('Failed to load PDF.js'));
+    document.head.appendChild(s);
+  }});
+}}
+
 let TREE = {{}};
 const state = {{ path:[], expanded:new Set(), search:'', folderFilter:'', page:0, PAGE:200 }};
 
@@ -391,13 +408,30 @@ async function viewFile(key, name) {{
     }} else if(AUD_EXT.has(ext)) {{
       body=`<audio src="${{esc(url)}}" controls autoplay></audio>`;
     }} else if(PDF_EXT.has(ext)) {{
-      const isMobile = window.innerWidth <= 768 || navigator.maxTouchPoints > 0;
-      if(isMobile) {{
-        window.open(url, '_blank');
-        closeModal();
-        return;
+      openModal(name, '<div class="modal-msg modal-loading">⏳ Loading PDF…</div>', dlFn);
+      try {{
+        const lib = await _loadPdfJs();
+        const pdfUrl = `${{API}}/pdf?key=${{encodeURIComponent(key)}}`;
+        const pdf = await lib.getDocument(pdfUrl).promise;
+        const wrap = document.createElement('div');
+        wrap.style.cssText = 'overflow-y:auto;width:100%;height:78vh;background:#111;display:flex;flex-direction:column;align-items:center;gap:8px;padding:8px;box-sizing:border-box;';
+        for(let p=1; p<=pdf.numPages; p++) {{
+          const page = await pdf.getPage(p);
+          const baseVp = page.getViewport({{scale:1}});
+          const scale = Math.min((window.innerWidth * 0.9) / baseVp.width, 2);
+          const vp = page.getViewport({{scale}});
+          const canvas = document.createElement('canvas');
+          canvas.width = vp.width; canvas.height = vp.height;
+          canvas.style.cssText = 'max-width:100%;border-radius:4px;display:block;';
+          await page.render({{canvasContext: canvas.getContext('2d'), viewport: vp}}).promise;
+          wrap.appendChild(canvas);
+        }}
+        document.getElementById('modal-body').innerHTML = '';
+        document.getElementById('modal-body').appendChild(wrap);
+      }} catch(pdfErr) {{
+        openModal('Error', `<div class="modal-msg" style="color:#f87171">${{esc(pdfErr.message)}}</div>`);
       }}
-      body=`<iframe src="${{esc(url)}}"></iframe>`;
+      return;
     }} else if(TXT_EXT.has(ext)) {{
       openModal(name, '<div class="modal-msg modal-loading">⏳ Loading…</div>', async()=>{{window.open(await presign(key,true),'_blank');}});
       const r2 = await fetch(`${{API}}/content?key=${{encodeURIComponent(key)}}`);

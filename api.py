@@ -152,6 +152,29 @@ def transcode():
     )
 
 
+@app.route("/pdf")
+def pdf_proxy():
+    """Proxy a PDF from S3 through the API (same-origin) so PDF.js can fetch it."""
+    key = request.args.get("key", "")
+    if not key:
+        return jsonify({"error": "missing key"}), 400
+    if not CFG.get("bucket"):
+        return jsonify({"error": "bucket not configured"}), 500
+    try:
+        client = boto3.client("s3", region_name=CFG.get("region", "us-east-1"))
+        obj = client.get_object(Bucket=CFG["bucket"], Key=key)
+        return Response(
+            stream_with_context(iter(lambda: obj["Body"].read(64 * 1024), b"")),
+            mimetype="application/pdf",
+            headers={
+                "Content-Disposition": f'inline; filename="{Path(key).name}"',
+                "Access-Control-Allow-Origin": "*",
+            },
+        )
+    except Exception as exc:
+        return jsonify({"error": str(exc)}), 500
+
+
 @app.route("/content")
 def content():
     key = request.args.get("key", "")
