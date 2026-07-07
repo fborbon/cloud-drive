@@ -756,12 +756,19 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
 #np-meta{{font-size:.68rem;color:#444}}
 #np-pos{{font-size:.7rem;color:#f97316;flex-shrink:0;font-family:ui-monospace,monospace;white-space:nowrap}}
 
+/* ── Seek bar ───────────────────────────────────────── */
+#seek-wrap{{display:flex;align-items:center;gap:.5rem;padding:.3rem .7rem;flex-shrink:0;background:#181818}}
+#seek-track{{flex:1;height:5px;background:#2a2a2a;border-radius:3px;cursor:pointer;position:relative;touch-action:none}}
+#seek-fill{{height:100%;background:#f97316;border-radius:3px;width:0%;pointer-events:none;transition:width .1s linear}}
+#time-cur,#time-dur{{font-size:.65rem;color:#555;font-family:ui-monospace,monospace;white-space:nowrap;flex-shrink:0;min-width:2.8rem}}
+#time-dur{{text-align:right}}
+
 #player-area{{flex:1;display:flex;align-items:center;justify-content:center;background:#0d0d0d;overflow:hidden;position:relative;min-height:0}}
 #player-video{{max-width:100%;max-height:100%;display:none;outline:none}}
 #player-img{{max-width:100%;max-height:100%;object-fit:contain;display:none}}
-#player-audio-wrap{{display:none;flex-direction:column;align-items:center;gap:1.5rem;padding:2.5rem}}
-#player-audio-art{{font-size:4.5rem;line-height:1}}
-#player-audio{{width:min(300px,90%)}}
+#player-audio-wrap{{display:none;flex-direction:column;align-items:center;gap:1rem;padding:1.5rem 2rem}}
+#player-audio-art{{font-size:4rem;line-height:1}}
+#player-audio{{display:none}}
 #player-empty{{color:#2a2a2a;font-size:.9rem;text-align:center;padding:2rem;line-height:2.2}}
 #player-loading{{display:none;position:absolute;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;color:#555;font-size:.82rem}}
 
@@ -818,12 +825,18 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
     <span id="np-pos"></span>
   </div>
 
+  <div id="seek-wrap">
+    <span id="time-cur">0:00</span>
+    <div id="seek-track"><div id="seek-fill"></div></div>
+    <span id="time-dur">0:00</span>
+  </div>
+
   <div id="player-area">
     <video id="player-video" controls></video>
     <img id="player-img" alt="">
     <div id="player-audio-wrap">
       <div id="player-audio-art">🎵</div>
-      <audio id="player-audio" controls></audio>
+      <audio id="player-audio"></audio>
     </div>
     <div id="player-empty">📂 Select a folder above, then pick a file to play</div>
     <div id="player-loading">⏳ Loading…</div>
@@ -903,6 +916,43 @@ const elEmpty   =document.getElementById('player-empty');
 const elLoading =document.getElementById('player-loading');
 const elPbar    =document.getElementById('img-progress-bar');
 const elPbarWrap=document.getElementById('img-progress-wrap');
+const elSeekFill=document.getElementById('seek-fill');
+const elTimeCur =document.getElementById('time-cur');
+const elTimeDur =document.getElementById('time-dur');
+
+function fmtTime(s){{if(!isFinite(s)||isNaN(s))return '0:00';const m=Math.floor(s/60),sec=Math.floor(s%60);return m+':'+String(sec).padStart(2,'0');}}
+function updateSeek(){{
+  const item=S.playlist[S.idx]; if(!item) return;
+  const med=item.t==='vid'?elVideo:item.t==='aud'?elAudio:null; if(!med) return;
+  const pct=med.duration?med.currentTime/med.duration*100:0;
+  elSeekFill.style.width=pct+'%';
+  elTimeCur.textContent=fmtTime(med.currentTime);
+  elTimeDur.textContent=fmtTime(med.duration);
+}}
+function resetSeek(){{elSeekFill.style.width='0%';elTimeCur.textContent='0:00';elTimeDur.textContent='0:00';}}
+elAudio.addEventListener('timeupdate',updateSeek);
+elVideo.addEventListener('timeupdate',updateSeek);
+elAudio.addEventListener('loadedmetadata',updateSeek);
+elVideo.addEventListener('loadedmetadata',updateSeek);
+
+// Click/drag to seek
+(function(){{
+  const track=document.getElementById('seek-track');
+  function seekTo(e){{
+    const item=S.playlist[S.idx]; if(!item) return;
+    const med=item.t==='vid'?elVideo:item.t==='aud'?elAudio:null; if(!med||!med.duration) return;
+    const rect=track.getBoundingClientRect();
+    const clientX=e.touches?e.touches[0].clientX:e.clientX;
+    med.currentTime=Math.max(0,Math.min(1,(clientX-rect.left)/rect.width))*med.duration;
+  }}
+  let seeking=false;
+  track.addEventListener('mousedown',e=>{{seeking=true;seekTo(e);}});
+  document.addEventListener('mousemove',e=>{{if(seeking)seekTo(e);}});
+  document.addEventListener('mouseup',()=>{{seeking=false;}});
+  track.addEventListener('touchstart',e=>{{seeking=true;seekTo(e);e.preventDefault();}},{{passive:false}});
+  document.addEventListener('touchmove',e=>{{if(seeking){{seekTo(e);e.preventDefault();}}}},{{passive:false}});
+  document.addEventListener('touchend',()=>{{seeking=false;}});
+}})();
 
 function showOnly(t){{
   elVideo.style.display   =t==='vid'?'block':'none';
@@ -950,6 +1000,7 @@ async function playItem(idx){{
   document.getElementById('np-pos').textContent=`${{idx+1}} / ${{S.playlist.length}}`;
   renderPlaylist();
 
+  resetSeek();
   elLoading.style.display='flex'; showOnly('');
   try{{
     const url=await resolveUrl(item);
@@ -1186,24 +1237,27 @@ renderTree();
 let _manualResize=false;
 bHandle.addEventListener('mousedown',()=>{{_manualResize=true;}});
 bHandle.addEventListener('touchstart',()=>{{_manualResize=true;}},{{passive:true}});
-(function fitToViewport() {{
+function fitToViewport() {{
   if(_manualResize) return;
   try {{
     const el=window.frameElement; if(!el) return;
+    const pWin=window.parent; const pDoc=pWin.document;
     const rect=el.getBoundingClientRect();
-    const newH=Math.max(300,window.parent.innerHeight-rect.top-4);
-    el.style.height=newH+'px'; if(el.parentElement) el.parentElement.style.height=newH+'px';
+    const newH=Math.max(300,pWin.innerHeight-rect.top-2);
+    el.style.height=newH+'px';
+    // Walk up the DOM suppressing overflow/height so the page cannot scroll
+    let node=el.parentElement;
+    while(node&&node!==pDoc.body){{
+      node.style.overflow='hidden';
+      node.style.height=(newH+rect.top)+'px';
+      node=node.parentElement;
+    }}
+    pDoc.body.style.overflow='hidden';
+    pDoc.body.style.height=pWin.innerHeight+'px';
   }} catch(e) {{}}
-}})();
-window.parent.addEventListener('resize',function() {{
-  if(_manualResize) return;
-  try {{
-    const el=window.frameElement; if(!el) return;
-    const rect=el.getBoundingClientRect();
-    const newH=Math.max(300,window.parent.innerHeight-rect.top-4);
-    el.style.height=newH+'px'; if(el.parentElement) el.parentElement.style.height=newH+'px';
-  }} catch(e) {{}}
-}});
+}}
+fitToViewport();
+window.parent.addEventListener('resize',fitToViewport);
 </script>
 </body>
 </html>"""
