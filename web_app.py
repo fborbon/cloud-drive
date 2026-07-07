@@ -140,6 +140,13 @@ with st.sidebar:
     if st.button("🔄 Refresh", use_container_width=True):
         st.cache_data.clear()
         st.rerun()
+    st.markdown(
+        '<a href="/cloud-api/logout" style="display:block;text-align:center;'
+        'padding:.4rem;border-radius:6px;border:1px solid #333;color:#888;'
+        'text-decoration:none;font-size:.8rem;margin-top:.5rem">'
+        '🚪 Log out</a>',
+        unsafe_allow_html=True,
+    )
 
 # ── tabs ──────────────────────────────────────────────────────────────────────
 

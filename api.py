@@ -42,6 +42,7 @@ CFG = _load_config()
 INDEX_DB = Path(os.environ.get("CLOUD_DRIVE_INDEX", "~/.cloud-drive/index.db")).expanduser()
 
 # ── Cookie auth ───────────────────────────────────────────────────────────────
+_AUTH_USERNAME = os.environ.get("CLOUD_DRIVE_USERNAME", "admin")
 _AUTH_PASSWORD = os.environ.get("CLOUD_DRIVE_PASSWORD", "vryKly0IEbkf1xZFiLu8")
 _COOKIE_NAME   = "cdrv_auth"
 _COOKIE_DAYS   = 30
@@ -76,10 +77,12 @@ button:hover{background:#4fa8d8}
 <body>
 <div class="card">
   <h1>☁️ Cloud Drive</h1>
-  <p>Enter your password to access your backup</p>
+  <p>Sign in to access your backup</p>
   <form method="post">
+    <label>Username</label>
+    <input type="text" name="username" autocomplete="username" placeholder="username" value="{{ prefill }}">
     <label>Password</label>
-    <input type="password" name="password" autofocus autocomplete="current-password" placeholder="••••••••••">
+    <input type="password" name="password" autocomplete="current-password" placeholder="••••••••••">
     <button type="submit">Sign in</button>
     {% if error %}<div class="err">{{ error }}</div>{% endif %}
   </form>
@@ -143,8 +146,11 @@ def auth_check():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
+        usr = request.form.get("username", "")
         pwd = request.form.get("password", "")
-        if hmac.compare_digest(pwd, _AUTH_PASSWORD):
+        usr_ok = hmac.compare_digest(usr, _AUTH_USERNAME)
+        pwd_ok = hmac.compare_digest(pwd, _AUTH_PASSWORD)
+        if usr_ok and pwd_ok:
             resp = make_response(redirect("/"))
             resp.set_cookie(
                 _COOKIE_NAME, _auth_token(),
@@ -152,8 +158,15 @@ def login():
                 secure=True, httponly=True, samesite="Lax",
             )
             return resp
-        return render_template_string(_LOGIN_HTML, error="Wrong password"), 401
-    return render_template_string(_LOGIN_HTML, error=None)
+        return render_template_string(_LOGIN_HTML, error="Wrong username or password", prefill=usr), 401
+    return render_template_string(_LOGIN_HTML, error=None, prefill="")
+
+
+@app.route("/logout")
+def logout():
+    resp = make_response(redirect("/cloud-api/login"))
+    resp.set_cookie(_COOKIE_NAME, "", max_age=0, secure=True, httponly=True, samesite="Lax")
+    return resp
 
 
 @app.route("/presign")
