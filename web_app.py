@@ -696,6 +696,17 @@ render();
 # ── Media Player ─────────────────────────────────────────────────────────────
 
 with tab_media:
+    st.markdown("""<style>
+/* Prevent Streamlit page from scrolling on the Media tab */
+[data-testid="stMain"]{overflow:hidden!important}
+.block-container{padding-bottom:0!important;overflow:hidden!important}
+/* Stretch the component iframe to fill remaining viewport */
+[data-testid="stMain"] iframe{
+  height:calc(100dvh - 120px)!important;
+  min-height:300px!important;
+}
+</style>""", unsafe_allow_html=True)
+
     PLAYER_HTML = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -747,7 +758,7 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
 #h-resize:hover,#h-resize.drag{{background:#f97316}}
 
 /* ── Bottom player panel ────────────────────────────── */
-#main{{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}}
+#main{{flex:1;display:grid;grid-template-rows:auto auto 1fr auto;min-height:0;overflow:hidden}}
 
 #now-playing{{padding:.45rem .8rem;border-bottom:1px solid #1c1c1c;flex-shrink:0;display:flex;align-items:center;gap:.6rem;min-height:38px}}
 #np-icon{{font-size:1rem;flex-shrink:0}}
@@ -1213,20 +1224,22 @@ document.addEventListener('touchend',()=>{{endVDrag();endHDrag();}});
 renderTree();
 function fitToViewport() {{
   try {{
-    const el=window.frameElement; if(!el) return;
-    const pWin=window.parent; const pDoc=pWin.document;
+    const pWin=window.parent;
+    const pDoc=pWin.document;
+    // Suppress Streamlit page scroll
+    const main=pDoc.querySelector('[data-testid="stMain"]');
+    if(main) main.style.overflow='hidden';
+    const bc=pDoc.querySelector('.block-container');
+    if(bc) bc.style.paddingBottom='0';
+    // Resize iframe
+    const el=window.frameElement;
+    if(!el) return;
     const rect=el.getBoundingClientRect();
-    const newH=Math.max(300,pWin.innerHeight-rect.top-2);
+    // Use scrollY-adjusted top so result is correct even if page was scrolled
+    const docTop=rect.top+pWin.scrollY;
+    const newH=Math.max(300,pWin.innerHeight-docTop-2);
     el.style.height=newH+'px';
-    // Walk up the DOM suppressing overflow/height so the page cannot scroll
-    let node=el.parentElement;
-    while(node&&node!==pDoc.body){{
-      node.style.overflow='hidden';
-      node.style.height=(newH+rect.top)+'px';
-      node=node.parentElement;
-    }}
-    pDoc.body.style.overflow='hidden';
-    pDoc.body.style.height=pWin.innerHeight+'px';
+    if(el.parentElement) el.parentElement.style.height=newH+'px';
   }} catch(e) {{}}
 }}
 fitToViewport();
@@ -1234,7 +1247,7 @@ window.parent.addEventListener('resize',fitToViewport);
 </script>
 </body>
 </html>"""
-    components.html(PLAYER_HTML, height=720, scrolling=False)
+    components.html(PLAYER_HTML, height=2000, scrolling=False)
 
 # ── Sync Log ──────────────────────────────────────────────────────────────────
 
