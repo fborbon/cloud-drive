@@ -724,6 +724,13 @@ body{{display:flex;background:#181818;color:#ccc;font-family:-apple-system,Blink
 #resize{{width:5px;cursor:col-resize;background:transparent;flex-shrink:0;transition:background .15s;touch-action:none}}
 #resize:hover,#resize.drag{{background:#f97316}}
 
+@media(max-width:600px){{
+  #rail{{width:90px!important;min-width:70px}}
+  #pl-panel{{width:100px!important;min-width:70px}}
+  .tree-label,.pl-name{{font-size:.65rem}}
+  .tree-count,.pl-idx{{display:none}}
+  #player-audio{{width:100px}}
+}}
 
 #main{{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}}
 
