@@ -1,4 +1,4 @@
-const CACHE = 'cloud-drive-v1';
+const CACHE = 'cloud-drive-v2';
 const OFFLINE_URL = '/pwa/offline.html';
 const PRECACHE = [OFFLINE_URL, '/pwa/icons/icon-192.png', '/pwa/icons/icon-512.png', '/manifest.json'];
 
@@ -14,6 +14,10 @@ self.addEventListener('activate', e => {
 });
 
 self.addEventListener('fetch', e => {
+  const url = new URL(e.request.url);
+  // Let the browser handle auth endpoints natively so cookies + redirects work correctly
+  if (url.pathname.startsWith('/cloud-api/')) return;
+
   if (e.request.mode === 'navigate') {
     e.respondWith(
       fetch(e.request).catch(() => caches.match(OFFLINE_URL))
