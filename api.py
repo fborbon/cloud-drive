@@ -1,6 +1,7 @@
 """Cloud Drive pre-signed URL API — runs as a separate service on port 8506."""
 
 import io
+import mimetypes
 import os
 import sqlite3
 import subprocess
@@ -93,11 +94,15 @@ def presign():
         return jsonify({"error": "bucket not configured"}), 500
     try:
         client = boto3.client("s3", region_name=CFG.get("region", "us-east-1"))
+        fname = Path(key).name
+        mime, _ = mimetypes.guess_type(fname)
         params: dict = {"Bucket": CFG["bucket"], "Key": key}
         if dl:
-            params["ResponseContentDisposition"] = (
-                f'attachment; filename="{Path(key).name}"'
-            )
+            params["ResponseContentDisposition"] = f'attachment; filename="{fname}"'
+        else:
+            params["ResponseContentDisposition"] = f'inline; filename="{fname}"'
+            if mime:
+                params["ResponseContentType"] = mime
         url = client.generate_presigned_url("get_object", Params=params, ExpiresIn=3600)
         return jsonify({"url": url})
     except Exception as exc:
