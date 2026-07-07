@@ -1158,6 +1158,29 @@ document.addEventListener('mouseup',endHDrag);
 hHandle.addEventListener('touchstart',e=>{{startHDrag(e.touches[0].clientY);e.preventDefault();}},{{passive:false}});
 
 renderTree();
+
+// ── Fit iframe to remaining viewport height ──────────────────────────────────
+(function fitToViewport() {{
+  try {{
+    const el = window.frameElement;
+    if (!el) return;
+    const parentWin = window.parent;
+    const rect = el.getBoundingClientRect();
+    const newH = Math.max(300, parentWin.innerHeight - rect.top - 4);
+    el.style.height = newH + 'px';
+    if (el.parentElement) el.parentElement.style.height = newH + 'px';
+  }} catch(e) {{}}
+}})();
+window.parent.addEventListener('resize', function() {{
+  try {{
+    const el = window.frameElement;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const newH = Math.max(300, window.parent.innerHeight - rect.top - 4);
+    el.style.height = newH + 'px';
+    if (el.parentElement) el.parentElement.style.height = newH + 'px';
+  }} catch(e) {{}}
+}});
 </script>
 </body>
 </html>"""
