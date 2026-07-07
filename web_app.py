@@ -751,9 +751,9 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
 #h-resize:hover,#h-resize.drag{{background:#f97316}}
 
 /* ── Bottom player panel ────────────────────────────── */
-#main{{flex:1;display:grid;grid-template-rows:auto auto 1fr auto;min-height:0;overflow:hidden}}
+#main{{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}}
 
-#now-playing{{padding:.45rem .8rem;border-bottom:1px solid #1c1c1c;flex-shrink:0;display:flex;align-items:center;gap:.6rem;min-height:38px}}
+#now-playing{{padding:.45rem .8rem;border-bottom:1px solid #1c1c1c;flex-shrink:0;display:flex;align-items:center;gap:.6rem;min-height:38px;overflow:hidden}}
 #np-icon{{font-size:1rem;flex-shrink:0}}
 #np-info{{flex:1;min-width:0}}
 #np-name{{font-size:.8rem;color:#ddd;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
@@ -761,13 +761,13 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
 #np-pos{{font-size:.7rem;color:#f97316;flex-shrink:0;font-family:ui-monospace,monospace;white-space:nowrap}}
 
 /* ── Seek bar ───────────────────────────────────────── */
-#seek-wrap{{display:flex;align-items:center;gap:.5rem;padding:.3rem .7rem;flex-shrink:0;background:#181818}}
+#seek-wrap{{display:flex;align-items:center;gap:.5rem;padding:.3rem .7rem;flex-shrink:0;background:#181818;overflow:hidden}}
 #seek-track{{flex:1;height:5px;background:#2a2a2a;border-radius:3px;cursor:pointer;position:relative;touch-action:none}}
 #seek-fill{{height:100%;background:#f97316;border-radius:3px;width:0%;pointer-events:none;transition:width .1s linear}}
 #time-cur,#time-dur{{font-size:.65rem;color:#555;font-family:ui-monospace,monospace;white-space:nowrap;flex-shrink:0;min-width:2.8rem}}
 #time-dur{{text-align:right}}
 
-#player-area{{flex:1;display:flex;align-items:center;justify-content:center;background:#0d0d0d;overflow:hidden;position:relative;min-height:0}}
+#player-area{{flex:1;display:flex;align-items:center;justify-content:center;background:#0d0d0d;overflow:hidden;position:relative;min-height:0;min-width:0}}
 #player-video{{max-width:100%;max-height:100%;display:none;outline:none}}
 #player-img{{max-width:100%;max-height:100%;object-fit:contain;display:none}}
 #player-audio-wrap{{display:none;flex-direction:column;align-items:center;gap:1rem;padding:1.5rem 2rem}}
@@ -848,28 +848,28 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
     <button class="img-nav" id="img-prev">&#8249;</button>
     <button class="img-nav" id="img-next">&#8250;</button>
     <div id="img-progress-wrap"><div id="img-progress-bar"></div></div>
-  </div>
+  </div><!-- /#player-area -->
+</div><!-- /#main -->
 
-  <div id="controls">
-    <button class="ctrl-btn" id="btn-prev" disabled>⏮</button>
-    <button class="ctrl-btn" id="btn-play" disabled>⏸</button>
-    <button class="ctrl-btn" id="btn-next" disabled>⏭</button>
-    <div class="ctrl-sep"></div>
-    <button class="ctrl-btn" id="btn-autoplay">⏩ Auto</button>
-    <button class="ctrl-btn" id="btn-shuffle">🔀 Shuffle</button>
-    <button class="ctrl-btn" id="btn-loop">🔁 Loop</button>
-    <div class="ctrl-sep"></div>
-    <span class="ctrl-lbl">🖼 Slide</span>
-    <select id="slideshow-speed">
-      <option value="3">3 s</option>
-      <option value="5" selected>5 s</option>
-      <option value="10">10 s</option>
-      <option value="20">20 s</option>
-    </select>
-    <div id="volume-wrap">
-      <span class="ctrl-lbl">🔊</span>
-      <input type="range" id="volume" min="0" max="1" step="0.05" value="0.8">
-    </div>
+<div id="controls">
+  <button class="ctrl-btn" id="btn-prev" disabled>⏮</button>
+  <button class="ctrl-btn" id="btn-play" disabled>⏸</button>
+  <button class="ctrl-btn" id="btn-next" disabled>⏭</button>
+  <div class="ctrl-sep"></div>
+  <button class="ctrl-btn" id="btn-autoplay">⏩ Auto</button>
+  <button class="ctrl-btn" id="btn-shuffle">🔀 Shuffle</button>
+  <button class="ctrl-btn" id="btn-loop">🔁 Loop</button>
+  <div class="ctrl-sep"></div>
+  <span class="ctrl-lbl">🖼 Slide</span>
+  <select id="slideshow-speed">
+    <option value="3">3 s</option>
+    <option value="5" selected>5 s</option>
+    <option value="10">10 s</option>
+    <option value="20">20 s</option>
+  </select>
+  <div id="volume-wrap">
+    <span class="ctrl-lbl">🔊</span>
+    <input type="range" id="volume" min="0" max="1" step="0.05" value="0.8">
   </div>
 </div>
 
