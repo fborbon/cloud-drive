@@ -45,6 +45,7 @@ jobs:
             pip install --quiet --upgrade pip
             pip install --quiet boto3 pyyaml streamlit pandas pillow flask
             python3 deploy/pwa/generate_icons.py
+            python3 deploy/patch_streamlit_head.py
             sudo cp deploy/nginx-drive.conf /etc/nginx/sites-available/drive.conf
             sudo ln -sf /etc/nginx/sites-available/drive.conf /etc/nginx/sites-enabled/drive.conf
             sudo nginx -t && sudo systemctl reload nginx

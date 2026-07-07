@@ -46,6 +46,7 @@ $SSH -i "$KEY" "$SERVER" bash <<'REMOTE'
     pip install --quiet --upgrade pip
     pip install --quiet boto3 pyyaml streamlit pandas pillow
     python3 deploy/pwa/generate_icons.py
+    python3 deploy/patch_streamlit_head.py
 REMOTE
 ok "Dependencies installed"
 

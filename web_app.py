@@ -15,48 +15,6 @@ import yaml
 st.set_page_config(page_title="Cloud Drive", page_icon="☁️", layout="wide")
 
 st.markdown("""
-<script>
-(function pwaInit() {
-    function injectHead() {
-        // manifest
-        if (!document.querySelector('link[rel="manifest"]')) {
-            var l = document.createElement('link');
-            l.rel = 'manifest'; l.href = '/manifest.json';
-            document.head.appendChild(l);
-        }
-        // apple / theme meta tags
-        [
-            ['mobile-web-app-capable',            'yes'],
-            ['apple-mobile-web-app-capable',       'yes'],
-            ['apple-mobile-web-app-status-bar-style', 'black-translucent'],
-            ['apple-mobile-web-app-title',         'CloudDrive'],
-            ['theme-color',                        '#1f77b4'],
-        ].forEach(function(p) {
-            if (!document.querySelector('meta[name="' + p[0] + '"]')) {
-                var m = document.createElement('meta');
-                m.name = p[0]; m.content = p[1];
-                document.head.appendChild(m);
-            }
-        });
-        // apple touch icon
-        if (!document.querySelector('link[rel="apple-touch-icon"]')) {
-            var i = document.createElement('link');
-            i.rel = 'apple-touch-icon'; i.href = '/pwa/icons/icon-192.png';
-            document.head.appendChild(i);
-        }
-        // service worker
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('/sw.js', {scope: '/'})
-                .catch(function(e) { console.warn('SW:', e); });
-        }
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', injectHead);
-    } else {
-        injectHead();
-    }
-})();
-</script>
 <style>
 @media (max-width: 768px) {
     section[data-testid="stSidebar"],
