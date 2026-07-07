@@ -1,193 +1,508 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Cloud Drive — Personal S3 Backup</title>
-  <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --blue: #1f77b4; --blue-light: #4fa8d8; --bg: #0d1117; --card: #161b22;
-      --border: #21262d; --text: #e6edf3; --muted: #8b949e;
-    }
-    body { background: var(--bg); color: var(--text);
-           font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cloud Drive — Demo</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--panel:#161b22;--panel2:#1c2128;--border:#21262d;
+  --text:#e6edf3;--muted:#8b949e;--faint:#484f58;
+  --blue:#1f77b4;--blue-l:#4fa8d8;--blue-dim:rgba(31,119,180,.15);
+  --green:#3fb950;--yellow:#d29922;--red:#f85149;
+  --radius:6px;--font:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --mono:'SF Mono','Fira Code',Consolas,monospace;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:var(--font);font-size:14px;line-height:1.5}
 
-    header {
-      display: flex; align-items: center; gap: 14px;
-      padding: 20px 40px; border-bottom: 1px solid var(--border);
-    }
-    .logo { font-size: 1.6rem; line-height: 1; }
-    .header-text h1 { font-size: 1.15rem; font-weight: 700; color: var(--blue-light); }
-    .header-text p  { font-size: .8rem; color: var(--muted); margin-top: 2px; }
-    header a { margin-left: auto; text-decoration: none; }
-    .btn-live {
-      background: var(--blue); color: #fff; border: none;
-      padding: 9px 20px; border-radius: 8px; font-size: .88rem;
-      font-weight: 600; cursor: pointer; transition: background .2s;
-      display: inline-block;
-    }
-    .btn-live:hover { background: var(--blue-light); }
+/* ── Layout ── */
+.layout{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:240px;flex-shrink:0;background:var(--panel);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow:hidden}
+.main{flex:1;overflow:hidden;display:flex;flex-direction:column}
 
-    .hero {
-      max-width: 860px; margin: 50px auto 0; padding: 0 24px; text-align: center;
-    }
-    .hero h2 { font-size: 2rem; font-weight: 700; color: var(--text); line-height: 1.25; }
-    .hero h2 span { color: var(--blue-light); }
-    .hero p { color: var(--muted); font-size: 1rem; margin-top: 14px; line-height: 1.65; }
-    .hero-btns { display: flex; gap: 12px; justify-content: center; margin-top: 28px; flex-wrap: wrap; }
-    .btn-primary {
-      background: var(--blue); color: #fff; text-decoration: none;
-      padding: 12px 28px; border-radius: 8px; font-size: .95rem; font-weight: 600;
-      transition: background .2s;
-    }
-    .btn-primary:hover { background: var(--blue-light); }
-    .btn-secondary {
-      background: transparent; color: var(--text); text-decoration: none;
-      padding: 12px 28px; border-radius: 8px; font-size: .95rem; font-weight: 600;
-      border: 1px solid var(--border); transition: border-color .2s;
-    }
-    .btn-secondary:hover { border-color: var(--blue-light); color: var(--blue-light); }
+/* ── Sidebar ── */
+.sb-head{padding:16px 14px 12px;border-bottom:1px solid var(--border)}
+.sb-title{font-size:1rem;font-weight:700;color:var(--blue-l);display:flex;align-items:center;gap:6px;margin-bottom:10px}
+.sb-meta{font-size:.72rem;color:var(--muted);display:flex;flex-direction:column;gap:3px}
+.sb-meta span{font-family:var(--mono)}
+.sb-meta b{color:var(--faint)}
+.sb-actions{padding:10px 14px;border-bottom:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+.btn{display:block;width:100%;padding:6px 10px;border-radius:var(--radius);border:1px solid var(--border);
+     background:var(--panel2);color:var(--muted);font-size:.8rem;cursor:pointer;text-align:center;text-decoration:none;transition:border-color .15s,color .15s}
+.btn:hover{border-color:var(--blue-l);color:var(--blue-l)}
+.btn-refresh{background:var(--blue-dim);border-color:var(--blue);color:var(--blue-l)}
+.btn-logout{color:var(--faint)}
 
-    .badge-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
-    .badge {
-      background: rgba(31,119,180,.1); border: 1px solid rgba(31,119,180,.25);
-      color: var(--blue-light); padding: 4px 12px; border-radius: 20px; font-size: .75rem;
-    }
+/* ── Sidebar tree ── */
+.sb-tree{flex:1;overflow-y:auto;padding:10px 0}
+.tree-label{padding:4px 14px;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);margin-top:4px}
+.tree-node{cursor:pointer;user-select:none}
+.tree-row{display:flex;align-items:center;gap:5px;padding:4px 14px;font-size:.82rem;color:var(--muted);transition:background .1s,color .1s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tree-row:hover{background:var(--panel2);color:var(--text)}
+.tree-row.active{background:rgba(79,168,216,.12);color:var(--blue-l)}
+.tree-row .chevron{font-size:.6rem;transition:transform .15s;flex-shrink:0;color:var(--faint)}
+.tree-row.open .chevron{transform:rotate(90deg)}
+.tree-icon{flex-shrink:0}
+.tree-count{margin-left:auto;font-family:var(--mono);font-size:.68rem;color:var(--faint);flex-shrink:0}
+.tree-children{display:none}
+.tree-children.open{display:block}
+.tree-children .tree-row{padding-left:28px}
+.tree-children .tree-children .tree-row{padding-left:44px}
 
-    .features { max-width: 960px; margin: 64px auto 0; padding: 0 24px; }
-    .features h3 { font-size: 1.3rem; font-weight: 700; text-align: center; color: var(--text); margin-bottom: 32px; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
-    .card {
-      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
-      padding: 22px 20px; transition: border-color .2s;
-    }
-    .card:hover { border-color: var(--blue); }
-    .card-icon { font-size: 1.6rem; margin-bottom: 10px; }
-    .card h4 { font-size: .9rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
-    .card p { font-size: .8rem; color: var(--muted); line-height: 1.55; }
+/* ── Tabs ── */
+.tabs-bar{display:flex;padding:0 20px;border-bottom:1px solid var(--border);background:var(--panel);flex-shrink:0}
+.tab-btn{padding:12px 16px;font-size:.85rem;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:color .15s,border-color .15s;white-space:nowrap}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--blue-l);border-bottom-color:var(--blue-l)}
 
-    .stack { max-width: 860px; margin: 56px auto 0; padding: 0 24px; }
-    .stack h3 { font-size: 1.3rem; font-weight: 700; text-align: center; color: var(--text); margin-bottom: 24px; }
-    .stack-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-    .stack-item {
-      background: var(--card); border: 1px solid var(--border);
-      padding: 8px 16px; border-radius: 6px; font-size: .8rem; color: var(--muted);
-    }
-    .stack-item strong { color: var(--text); }
+/* ── Tab panes ── */
+.pane{display:none;flex:1;overflow:hidden}
+.pane.active{display:flex;flex-direction:column}
 
-    .cta { text-align: center; padding: 60px 24px; }
-    .cta h3 { font-size: 1.4rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
-    .cta p { color: var(--muted); margin-bottom: 24px; }
+/* ── Browse ── */
+.browse-layout{display:flex;flex:1;overflow:hidden}
+.file-list{flex:1;overflow-y:auto;padding:16px 20px}
+.folder-path{display:flex;align-items:center;gap:4px;font-size:.78rem;color:var(--muted);margin-bottom:14px;flex-wrap:wrap}
+.folder-path span{cursor:pointer}.folder-path span:hover{color:var(--blue-l)}
+.folder-path .sep{color:var(--faint)}
+.file-grid{width:100%;border-collapse:collapse}
+.file-grid th{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);padding:6px 8px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap}
+.file-grid td{padding:7px 8px;border-bottom:1px solid var(--border);font-size:.83rem;vertical-align:middle}
+.file-grid tr:hover td{background:var(--panel2)}
+.file-grid tr.dir-row td{cursor:pointer}
+.file-name{display:flex;align-items:center;gap:7px;color:var(--text)}
+.file-name .fi{font-size:1rem;flex-shrink:0}
+.file-size{font-family:var(--mono);font-size:.78rem;color:var(--muted);text-align:right;white-space:nowrap}
+.file-date{font-family:var(--mono);font-size:.78rem;color:var(--faint);white-space:nowrap}
+.file-action{text-align:right}
+.dl-btn{font-size:.7rem;color:var(--faint);cursor:pointer;padding:2px 6px;border-radius:4px;border:1px solid transparent;transition:border-color .1s,color .1s}
+.dl-btn:hover{border-color:var(--border);color:var(--muted)}
 
-    footer { border-top: 1px solid var(--border); padding: 20px 40px; text-align: center; }
-    footer p { font-size: .78rem; color: var(--muted); }
-    footer a { color: var(--blue-light); text-decoration: none; }
+/* ── Media player ── */
+.media-pane{flex:1;overflow-y:auto;padding:24px}
+.player-card{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:24px;max-width:520px;margin:0 auto}
+.player-art{width:100%;aspect-ratio:1;border-radius:8px;background:linear-gradient(135deg,#1c2a38 0%,#0d1f2d 100%);display:flex;align-items:center;justify-content:center;font-size:4rem;margin-bottom:20px;border:1px solid var(--border)}
+.player-meta h3{font-size:1.05rem;font-weight:700;color:var(--text);margin-bottom:3px}
+.player-meta p{font-size:.8rem;color:var(--muted)}
+.player-progress{margin:16px 0}
+.progress-bar{width:100%;height:3px;background:var(--border);border-radius:2px;position:relative;cursor:pointer}
+.progress-fill{height:100%;background:var(--blue-l);border-radius:2px;width:34%}
+.progress-times{display:flex;justify-content:space-between;font-family:var(--mono);font-size:.72rem;color:var(--faint);margin-top:5px}
+.player-controls{display:flex;align-items:center;justify-content:center;gap:20px;margin-top:8px}
+.ctrl-btn{background:none;border:none;color:var(--muted);cursor:pointer;font-size:1.4rem;line-height:1;padding:4px;transition:color .15s}
+.ctrl-btn:hover{color:var(--text)}
+.ctrl-btn.play{font-size:2rem;color:var(--blue-l)}
+.ctrl-btn.play:hover{color:var(--blue)}
+.player-queue{margin-top:20px;border-top:1px solid var(--border);padding-top:14px}
+.queue-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);margin-bottom:10px}
+.queue-item{display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border);cursor:pointer}
+.queue-item:last-child{border-bottom:none}
+.queue-item:hover .queue-name{color:var(--blue-l)}
+.queue-num{font-family:var(--mono);font-size:.72rem;color:var(--faint);width:18px;text-align:right;flex-shrink:0}
+.queue-name{font-size:.83rem;color:var(--muted);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.queue-name.playing{color:var(--blue-l)}
+.queue-dur{font-family:var(--mono);font-size:.72rem;color:var(--faint);flex-shrink:0}
 
-    @media (max-width: 600px) {
-      header { padding: 16px 20px; }
-      .hero { margin-top: 36px; }
-      .hero h2 { font-size: 1.5rem; }
-      .features, .stack { padding: 0 16px; }
-    }
-  </style>
+/* ── Overview ── */
+.overview-pane{flex:1;overflow-y:auto;padding:24px}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:24px}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px}
+.kpi-label{font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);margin-bottom:6px}
+.kpi-val{font-size:1.55rem;font-weight:700;font-family:var(--mono);color:var(--text);line-height:1}
+.kpi-sub{font-size:.72rem;color:var(--muted);margin-top:4px}
+.ov-section-title{font-size:.85rem;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+.folder-bars{display:flex;flex-direction:column;gap:10px;margin-bottom:28px}
+.fbar{display:flex;align-items:center;gap:10px}
+.fbar-label{font-size:.82rem;color:var(--muted);width:130px;flex-shrink:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fbar-track{flex:1;height:6px;background:var(--border);border-radius:3px;overflow:hidden}
+.fbar-fill{height:100%;background:var(--blue);border-radius:3px;transition:width .4s ease}
+.fbar-val{font-family:var(--mono);font-size:.72rem;color:var(--faint);width:64px;text-align:right;flex-shrink:0}
+.cost-card{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:28px}
+.cost-row{display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:1px solid var(--border);font-size:.83rem}
+.cost-row:last-child{border-bottom:none;font-weight:700;padding-top:10px;margin-top:4px}
+.cost-row .val{font-family:var(--mono);color:var(--blue-l)}
+
+/* ── Sync log ── */
+.log-pane{flex:1;overflow-y:auto;padding:24px}
+.log-table{width:100%;border-collapse:collapse}
+.log-table th{font-size:.72rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--faint);padding:8px 10px;text-align:left;border-bottom:1px solid var(--border)}
+.log-table td{padding:9px 10px;border-bottom:1px solid var(--border);font-size:.82rem;vertical-align:middle}
+.log-table tr:hover td{background:var(--panel2)}
+.badge{display:inline-flex;align-items:center;gap:5px;padding:2px 8px;border-radius:20px;font-size:.7rem;font-weight:600}
+.badge-done{background:rgba(63,185,80,.12);color:var(--green);border:1px solid rgba(63,185,80,.2)}
+.badge-run{background:rgba(210,153,34,.12);color:var(--yellow);border:1px solid rgba(210,153,34,.2)}
+.num{font-family:var(--mono);font-size:.78rem;font-variant-numeric:tabular-nums}
+
+/* ── Demo banner ── */
+.demo-bar{background:rgba(31,119,180,.1);border-bottom:1px solid rgba(31,119,180,.25);padding:6px 20px;font-size:.75rem;color:var(--blue-l);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.demo-bar a{color:var(--blue-l);text-decoration:underline;text-underline-offset:2px}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--faint)}
+
+/* ── Mobile ── */
+@media(max-width:640px){
+  .sidebar{display:none}
+  .file-date,.file-action{display:none}
+  .kpi-row{grid-template-columns:1fr 1fr}
+}
+</style>
 </head>
 <body>
 
-<header>
-  <div class="logo">☁️</div>
-  <div class="header-text">
-    <h1>Cloud Drive</h1>
-    <p>Personal S3 Glacier Backup</p>
-  </div>
-  <a href="https://drive.forwardforecasting.eu" class="btn-live" target="_blank">Open App →</a>
-</header>
+<div class="layout">
 
-<section class="hero">
-  <h2>Personal cloud backup<br>to <span>S3 Glacier</span> — cheap and permanent</h2>
-  <p>
-    A self-hosted backup system that syncs files from external hard drives to AWS S3 Glacier
-    Instant Retrieval. Browse and stream your backed-up files from anywhere with a clean web UI.
-    Install as a PWA on your phone.
-  </p>
-  <div class="hero-btns">
-    <a href="https://drive.forwardforecasting.eu" class="btn-primary" target="_blank">Open Cloud Drive</a>
-    <a href="https://github.com/fborbon/cloud-drive" class="btn-secondary" target="_blank">View on GitHub</a>
-  </div>
-  <div class="badge-row">
-    <span class="badge">AWS S3 Glacier IR</span>
-    <span class="badge">$0.004 / GB / month</span>
-    <span class="badge">Move detection</span>
-    <span class="badge">PWA ready</span>
-    <span class="badge">WMA transcoding</span>
-    <span class="badge">Multi-thread upload</span>
-  </div>
-</section>
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div class="sb-head">
+      <div class="sb-title">☁️ Cloud Drive</div>
+      <div class="sb-meta">
+        <div><b>Bucket</b> <span>my-cloud-drive-…</span></div>
+        <div><b>Storage</b> <span>GLACIER_IR</span></div>
+        <div><b>Region</b> <span>us-east-1</span></div>
+        <div><b>Source</b> <span>local index</span></div>
+      </div>
+    </div>
+    <div class="sb-actions">
+      <button class="btn btn-refresh" onclick="return false">🔄 Refresh</button>
+      <a class="btn btn-logout" href="#">🚪 Log out</a>
+    </div>
 
-<section class="features">
-  <h3>Features</h3>
-  <div class="grid">
-    <div class="card">
-      <div class="card-icon">🚀</div>
-      <h4>Fast Incremental Sync</h4>
-      <p>SHA-256 computed in a single read pass during upload. Skips unchanged files. 10 parallel threads.</p>
-    </div>
-    <div class="card">
-      <div class="card-icon">🔄</div>
-      <h4>Move Detection</h4>
-      <p>Reorganizing files locally triggers S3 CopyObject — no re-upload, instant and free.</p>
-    </div>
-    <div class="card">
-      <div class="card-icon">📂</div>
-      <h4>File Browser</h4>
-      <p>Lazy-loaded folder tree, file search, image preview, video and audio playback, PDF and text viewer.</p>
-    </div>
-    <div class="card">
-      <div class="card-icon">🎵</div>
-      <h4>Media Player</h4>
-      <p>Playlist mode, slideshow, shuffle, autoplay. WMA files transcoded on-the-fly via ffmpeg.</p>
-    </div>
-    <div class="card">
-      <div class="card-icon">📱</div>
-      <h4>PWA for Mobile</h4>
-      <p>Installable on iOS and Android. Sidebar hidden on small screens. Touch-friendly resize handles.</p>
-    </div>
-    <div class="card">
-      <div class="card-icon">💰</div>
-      <h4>Ultra-low Cost</h4>
-      <p>S3 Glacier Instant Retrieval at $0.004/GB/month. 350 GB costs ~$1.40/month. Millisecond retrieval.</p>
-    </div>
-  </div>
-</section>
+    <div class="sb-tree">
+      <div class="tree-label">Folders</div>
 
-<section class="stack">
-  <h3>Built with</h3>
-  <div class="stack-grid">
-    <div class="stack-item"><strong>Python</strong> · sync engine</div>
-    <div class="stack-item"><strong>Streamlit</strong> · web UI</div>
-    <div class="stack-item"><strong>Flask</strong> · presign API</div>
-    <div class="stack-item"><strong>boto3</strong> · S3 client</div>
-    <div class="stack-item"><strong>SQLite</strong> · local index</div>
-    <div class="stack-item"><strong>ffmpeg</strong> · WMA transcode</div>
-    <div class="stack-item"><strong>AWS S3</strong> · Glacier IR</div>
-    <div class="stack-item"><strong>nginx</strong> · reverse proxy</div>
-    <div class="stack-item"><strong>EC2</strong> · hosting</div>
-  </div>
-</section>
+      <!-- Datos familia -->
+      <div class="tree-node">
+        <div class="tree-row" onclick="toggleTree(this,'datos')">
+          <span class="chevron">▶</span>
+          <span class="tree-icon">📁</span>
+          <span>Family</span>
+          <span class="tree-count">2.3k</span>
+        </div>
+        <div class="tree-children" id="datos">
+          <div class="tree-row" onclick="loadFolder('datos/Photos')"><span class="tree-icon">📁</span>Photos<span class="tree-count">1.4k</span></div>
+          <div class="tree-row" onclick="loadFolder('datos/Videos')"><span class="tree-icon">📁</span>Videos<span class="tree-count">312</span></div>
+          <div class="tree-row" onclick="loadFolder('datos/Documents')"><span class="tree-icon">📁</span>Documents<span class="tree-count">589</span></div>
+        </div>
+      </div>
 
-<section class="cta">
-  <h3>Ready to use</h3>
-  <p>Deployed at drive.forwardforecasting.eu · CI/CD via GitHub Actions</p>
-  <a href="https://drive.forwardforecasting.eu" class="btn-primary" target="_blank">Open Cloud Drive →</a>
-</section>
+      <!-- Documents -->
+      <div class="tree-node">
+        <div class="tree-row" onclick="toggleTree(this,'docs')">
+          <span class="chevron">▶</span>
+          <span class="tree-icon">📁</span>
+          <span>Documents</span>
+          <span class="tree-count">45k</span>
+        </div>
+        <div class="tree-children" id="docs">
+          <div class="tree-row" onclick="loadFolder('docs/Invoices')"><span class="tree-icon">📁</span>Invoices<span class="tree-count">8.1k</span></div>
+          <div class="tree-row" onclick="loadFolder('docs/Contracts')"><span class="tree-icon">📁</span>Contracts<span class="tree-count">234</span></div>
+          <div class="tree-row" onclick="loadFolder('docs/Certificates')"><span class="tree-icon">📁</span>Certificates<span class="tree-count">112</span></div>
+          <div class="tree-row" onclick="loadFolder('docs/Education')"><span class="tree-icon">📁</span>Education<span class="tree-count">36k</span></div>
+        </div>
+      </div>
 
-<footer>
-  <p>
-    <a href="https://drive.forwardforecasting.eu" target="_blank">Live App</a> ·
-    <a href="https://github.com/fborbon/cloud-drive" target="_blank">GitHub</a> ·
-    <a href="https://forwardforecasting.eu" target="_blank">forwardforecasting.eu</a>
-  </p>
-</footer>
+      <!-- Music -->
+      <div class="tree-node">
+        <div class="tree-row active open" onclick="toggleTree(this,'musica')">
+          <span class="chevron">▶</span>
+          <span class="tree-icon">📁</span>
+          <span>Music</span>
+          <span class="tree-count">18.8k</span>
+        </div>
+        <div class="tree-children open" id="musica">
+          <div class="tree-row" onclick="loadFolder('musica/Jazz')"><span class="tree-icon">📁</span>Jazz<span class="tree-count">4.2k</span></div>
+          <div class="tree-row" onclick="loadFolder('musica/Rock')"><span class="tree-icon">📁</span>Rock<span class="tree-count">3.1k</span></div>
+          <div class="tree-row" onclick="loadFolder('musica/Pop')"><span class="tree-icon">📁</span>Pop<span class="tree-count">5.9k</span></div>
+          <div class="tree-row" onclick="loadFolder('musica/Electronic')"><span class="tree-icon">📁</span>Electronic<span class="tree-count">2.4k</span></div>
+          <div class="tree-row" onclick="loadFolder('musica/Podcasts')"><span class="tree-icon">📁</span>Podcasts<span class="tree-count">3.2k</span></div>
+        </div>
+      </div>
 
+      <!-- Projects -->
+      <div class="tree-node">
+        <div class="tree-row" onclick="toggleTree(this,'prog')">
+          <span class="chevron">▶</span>
+          <span class="tree-icon">📁</span>
+          <span>Projects</span>
+          <span class="tree-count">308k</span>
+        </div>
+        <div class="tree-children" id="prog">
+          <div class="tree-row" onclick="loadFolder('prog/Code')"><span class="tree-icon">📁</span>Code<span class="tree-count">201k</span></div>
+          <div class="tree-row" onclick="loadFolder('prog/Datasets')"><span class="tree-icon">📁</span>Datasets<span class="tree-count">87k</span></div>
+          <div class="tree-row" onclick="loadFolder('prog/Models')"><span class="tree-icon">📁</span>Models<span class="tree-count">20k</span></div>
+        </div>
+      </div>
+
+      <!-- Videos -->
+      <div class="tree-node">
+        <div class="tree-row" onclick="toggleTree(this,'videos')">
+          <span class="chevron">▶</span>
+          <span class="tree-icon">📁</span>
+          <span>Videos</span>
+          <span class="tree-count">41</span>
+        </div>
+        <div class="tree-children" id="videos">
+          <div class="tree-row" onclick="loadFolder('videos/2023')"><span class="tree-icon">📁</span>2023<span class="tree-count">18</span></div>
+          <div class="tree-row" onclick="loadFolder('videos/2024')"><span class="tree-icon">📁</span>2024<span class="tree-count">23</span></div>
+        </div>
+      </div>
+
+    </div><!-- tree -->
+  </aside>
+
+  <!-- ── Main ── -->
+  <div class="main">
+    <div class="demo-bar">
+      📋 Demo — read-only preview of the Cloud Drive UI &nbsp;·&nbsp;
+      <a href="https://drive.forwardforecasting.eu">Open live app →</a>
+    </div>
+
+    <div class="tabs-bar">
+      <div class="tab-btn active" onclick="switchTab('browse',this)">📂 Browse</div>
+      <div class="tab-btn" onclick="switchTab('media',this)">🎵 Media Player</div>
+      <div class="tab-btn" onclick="switchTab('overview',this)">📊 Overview</div>
+      <div class="tab-btn" onclick="switchTab('log',this)">📋 Sync Log</div>
+    </div>
+
+    <!-- BROWSE -->
+    <div class="pane active" id="pane-browse">
+      <div class="file-list">
+        <div class="folder-path">
+          <span onclick="loadFolder('')">seagate/Personal</span>
+          <span class="sep">/</span>
+          <span onclick="loadFolder('musica')" id="bc1">Musica</span>
+        </div>
+        <table class="file-grid" id="file-table">
+          <thead><tr>
+            <th style="width:100%">Name</th>
+            <th>Size</th>
+            <th>Date</th>
+            <th></th>
+          </tr></thead>
+          <tbody id="file-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- MEDIA PLAYER -->
+    <div class="pane" id="pane-media">
+      <div class="media-pane">
+        <div class="player-card">
+          <div class="player-art">🎵</div>
+          <div class="player-meta">
+            <h3>The Blue Quartet — Evening Ride</h3>
+            <p>Music / Jazz &nbsp;·&nbsp; 4.7 MB</p>
+          </div>
+          <div class="player-progress">
+            <div class="progress-bar"><div class="progress-fill"></div></div>
+            <div class="progress-times"><span>1:23</span><span>4:05</span></div>
+          </div>
+          <div class="player-controls">
+            <button class="ctrl-btn" title="Shuffle">⇄</button>
+            <button class="ctrl-btn" title="Previous">⏮</button>
+            <button class="ctrl-btn play" title="Play/Pause">⏸</button>
+            <button class="ctrl-btn" title="Next">⏭</button>
+            <button class="ctrl-btn" title="Repeat">↻</button>
+          </div>
+          <div class="player-queue">
+            <div class="queue-label">Up next</div>
+            <div class="queue-item"><span class="queue-num">1</span><span class="queue-name playing">The Blue Quartet — Evening Ride</span><span class="queue-dur">4:05</span></div>
+            <div class="queue-item"><span class="queue-num">2</span><span class="queue-name">Silver Noise — Open Road</span><span class="queue-dur">3:47</span></div>
+            <div class="queue-item"><span class="queue-num">3</span><span class="queue-name">Harbour Lights — Midnight Run</span><span class="queue-dur">7:12</span></div>
+            <div class="queue-item"><span class="queue-num">4</span><span class="queue-name">Coastline — Summer Static</span><span class="queue-dur">3:58</span></div>
+            <div class="queue-item"><span class="queue-num">5</span><span class="queue-name">The Blue Quartet — Slow Burn</span><span class="queue-dur">5:21</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OVERVIEW -->
+    <div class="pane" id="pane-overview">
+      <div class="overview-pane">
+        <div class="kpi-row">
+          <div class="kpi"><div class="kpi-label">Total Files</div><div class="kpi-val">375,195</div><div class="kpi-sub">across 5 folders</div></div>
+          <div class="kpi"><div class="kpi-label">Total Size</div><div class="kpi-val">317.0 GB</div><div class="kpi-sub">in S3 Glacier IR</div></div>
+          <div class="kpi"><div class="kpi-label">Last Sync</div><div class="kpi-val" style="font-size:1.1rem">Jul 7, 2026</div><div class="kpi-sub">all folders clean</div></div>
+          <div class="kpi"><div class="kpi-label">Monthly Cost</div><div class="kpi-val">$1.27</div><div class="kpi-sub">≈ $0.004/GB</div></div>
+        </div>
+
+        <div class="ov-section-title" style="margin-bottom:14px">Storage by folder</div>
+        <div class="folder-bars">
+          <div class="fbar"><span class="fbar-label">Projects</span><div class="fbar-track"><div class="fbar-fill" style="width:86%"></div></div><span class="fbar-val">201.2 GB</span></div>
+          <div class="fbar"><span class="fbar-label">Music</span><div class="fbar-track"><div class="fbar-fill" style="width:38%"></div></div><span class="fbar-val">89.4 GB</span></div>
+          <div class="fbar"><span class="fbar-label">Documents</span><div class="fbar-track"><div class="fbar-fill" style="width:7%"></div></div><span class="fbar-val">12.8 GB</span></div>
+          <div class="fbar"><span class="fbar-label">Videos</span><div class="fbar-track"><div class="fbar-fill" style="width:4%"></div></div><span class="fbar-val">9.4 GB</span></div>
+          <div class="fbar"><span class="fbar-label">Family</span><div class="fbar-track"><div class="fbar-fill" style="width:2%"></div></div><span class="fbar-val">4.2 GB</span></div>
+        </div>
+
+        <div class="ov-section-title">Estimated monthly cost</div>
+        <div class="cost-card">
+          <div class="cost-row"><span>Storage (317 GB × $0.004)</span><span class="val">$1.27</span></div>
+          <div class="cost-row"><span>Retrieval (0 requests)</span><span class="val">$0.00</span></div>
+          <div class="cost-row"><span>S3 PUT/COPY requests</span><span class="val">$0.02</span></div>
+          <div class="cost-row"><span style="color:var(--text)">Total estimate</span><span class="val">$1.29</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SYNC LOG -->
+    <div class="pane" id="pane-log">
+      <div class="log-pane">
+        <table class="log-table">
+          <thead><tr>
+            <th>Folder</th><th>Uploaded</th><th>Size</th><th>Skipped</th><th>Failed</th><th>Finished</th><th>Status</th>
+          </tr></thead>
+          <tbody>
+            <tr><td>Music</td><td class="num">4,170</td><td class="num">23.7 GB</td><td class="num">14,677</td><td class="num">0</td><td class="num">Jul 7 15:35</td><td><span class="badge badge-done">● Done</span></td></tr>
+            <tr><td>Projects</td><td class="num">0</td><td class="num">—</td><td class="num">57,587</td><td class="num">0</td><td class="num">Jul 7 15:38</td><td><span class="badge badge-done">● Done</span></td></tr>
+            <tr><td>Videos</td><td class="num">0</td><td class="num">—</td><td class="num">41</td><td class="num">0</td><td class="num">Jul 7 15:38</td><td><span class="badge badge-done">● Done</span></td></tr>
+            <tr><td>Documents</td><td class="num">0</td><td class="num">—</td><td class="num">45,223</td><td class="num">0</td><td class="num">Jul 7 03:22</td><td><span class="badge badge-done">● Done</span></td></tr>
+            <tr><td>Family</td><td class="num">0</td><td class="num">—</td><td class="num">2,341</td><td class="num">0</td><td class="num">Jul 7 03:18</td><td><span class="badge badge-done">● Done</span></td></tr>
+            <tr><td>Music</td><td class="num">18,847</td><td class="num">89.4 GB</td><td class="num">0</td><td class="num">0</td><td class="num">Jul 6 03:35</td><td><span class="badge badge-done">● Done</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div><!-- main -->
+</div><!-- layout -->
+
+<script>
+// ── Tab switching ──────────────────────────────────────────────────
+function switchTab(id, btn) {
+  document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('pane-' + id).classList.add('active');
+  btn.classList.add('active');
+}
+
+// ── Folder tree toggle ────────────────────────────────────────────
+function toggleTree(row, id) {
+  const ch = document.getElementById(id);
+  const isOpen = ch.classList.toggle('open');
+  row.classList.toggle('open', isOpen);
+}
+
+// ── File data ─────────────────────────────────────────────────────
+const FOLDERS = {
+  '': [
+    {type:'dir', name:'Documents', size:'12.8 GB', date:'2026-07-07', icon:'📁'},
+    {type:'dir', name:'Family',    size:'4.2 GB',  date:'2026-07-07', icon:'📁'},
+    {type:'dir', name:'Music',     size:'89.4 GB', date:'2026-07-07', icon:'📁'},
+    {type:'dir', name:'Projects',  size:'201.2 GB',date:'2026-07-07', icon:'📁'},
+    {type:'dir', name:'Videos',    size:'9.4 GB',  date:'2026-07-07', icon:'📁'},
+  ],
+  'Music': [
+    {type:'dir', name:'Jazz',       size:'21.4 GB', date:'2026-07-07', icon:'📁'},
+    {type:'dir', name:'Rock',       size:'18.3 GB', date:'2026-07-07', icon:'📁'},
+    {type:'dir', name:'Pop',        size:'28.1 GB', date:'2026-07-07', icon:'📁'},
+    {type:'dir', name:'Electronic', size:'11.8 GB', date:'2026-07-07', icon:'📁'},
+    {type:'dir', name:'Podcasts',   size:'9.8 GB',  date:'2026-07-07', icon:'📁'},
+  ],
+  'Music/Jazz': [
+    {type:'file', name:'The Blue Quartet - Evening Ride.mp3',  size:'4.7 MB', date:'2026-07-06', icon:'🎵'},
+    {type:'file', name:'The Blue Quartet - Slow Burn.mp3',     size:'5.1 MB', date:'2026-07-06', icon:'🎵'},
+    {type:'file', name:'Silver Noise - Open Road.mp3',         size:'7.2 MB', date:'2026-07-06', icon:'🎵'},
+    {type:'file', name:'Harbour Lights - Midnight Run.mp3',    size:'4.0 MB', date:'2026-07-06', icon:'🎵'},
+    {type:'file', name:'Coastline - Summer Static.mp3',        size:'5.8 MB', date:'2026-07-06', icon:'🎵'},
+    {type:'file', name:'The Blue Quartet - Late Hours.mp3',    size:'6.3 MB', date:'2026-07-06', icon:'🎵'},
+    {type:'file', name:'Silver Noise - Last Train.mp3',        size:'6.1 MB', date:'2026-07-07', icon:'🎵'},
+    {type:'file', name:'Harbour Lights - Glass City.mp3',      size:'7.4 MB', date:'2026-07-07', icon:'🎵'},
+  ],
+  'Family': [
+    {type:'dir', name:'Photos',    size:'2.3 GB', date:'2026-07-07', icon:'📁'},
+    {type:'dir', name:'Videos',    size:'1.2 GB', date:'2026-07-07', icon:'📁'},
+    {type:'dir', name:'Documents', size:'0.7 GB', date:'2026-07-07', icon:'📁'},
+  ],
+  'Documents': [
+    {type:'dir', name:'Invoices',     size:'3.1 GB', date:'2026-07-07', icon:'📁'},
+    {type:'dir', name:'Contracts',    size:'1.2 GB', date:'2026-07-07', icon:'📁'},
+    {type:'dir', name:'Certificates', size:'0.4 GB', date:'2026-07-07', icon:'📁'},
+    {type:'dir', name:'Education',    size:'8.1 GB', date:'2026-07-07', icon:'📁'},
+  ],
+  'Documents/Invoices': [
+    {type:'file', name:'Invoice_2026_06_001.pdf', size:'124 KB', date:'2026-06-30', icon:'📄'},
+    {type:'file', name:'Invoice_2026_05_001.pdf', size:'118 KB', date:'2026-05-31', icon:'📄'},
+    {type:'file', name:'Invoice_2026_04_001.pdf', size:'121 KB', date:'2026-04-30', icon:'📄'},
+    {type:'file', name:'Utility_Bill_Jun2026.pdf',size:'89 KB',  date:'2026-06-15', icon:'📄'},
+    {type:'file', name:'Utility_Bill_May2026.pdf',size:'76 KB',  date:'2026-05-10', icon:'📄'},
+  ],
+  'Projects': [
+    {type:'dir', name:'Code',     size:'156.2 GB', date:'2026-07-07', icon:'📁'},
+    {type:'dir', name:'Datasets', size:'32.4 GB',  date:'2026-07-07', icon:'📁'},
+    {type:'dir', name:'Models',   size:'12.6 GB',  date:'2026-07-07', icon:'📁'},
+  ],
+  'Videos': [
+    {type:'dir', name:'2023', size:'4.1 GB', date:'2026-07-07', icon:'📁'},
+    {type:'dir', name:'2024', size:'5.3 GB', date:'2026-07-07', icon:'📁'},
+  ],
+};
+
+let currentPath = 'Music';
+
+function extIcon(name) {
+  const ext = name.split('.').pop().toLowerCase();
+  if (['mp3','wma','flac','ogg','aac','m4a'].includes(ext)) return '🎵';
+  if (['mp4','mkv','avi','mov'].includes(ext)) return '🎬';
+  if (['jpg','jpeg','png','gif','webp','heic'].includes(ext)) return '🖼️';
+  if (['pdf'].includes(ext)) return '📄';
+  if (['zip','rar','7z','tar','gz'].includes(ext)) return '📦';
+  if (['py','js','ts','html','css','java','cpp','c'].includes(ext)) return '💻';
+  if (['xlsx','xls','csv'].includes(ext)) return '📊';
+  if (['docx','doc','txt'].includes(ext)) return '📝';
+  return '📄';
+}
+
+function loadFolder(path) {
+  currentPath = path;
+  const items = FOLDERS[path] || [];
+  const tbody = document.getElementById('file-tbody');
+
+  // breadcrumb
+  const parts = path ? path.split('/') : [];
+  let bc = '<span onclick="loadFolder(\'\')">external-drive/Backup</span>';
+  for (let i = 0; i < parts.length; i++) {
+    bc += '<span class="sep">/</span>';
+    const sub = parts.slice(0, i+1).join('/');
+    bc += `<span onclick="loadFolder('${sub}')">${parts[i]}</span>`;
+  }
+  document.querySelector('.folder-path').innerHTML = bc;
+
+  // rows
+  let html = '';
+  if (path) {
+    const up = path.includes('/') ? path.split('/').slice(0,-1).join('/') : '';
+    html += `<tr class="dir-row" onclick="loadFolder('${up}')"><td><div class="file-name"><span class="fi">📁</span><span style="color:var(--muted)">..</span></div></td><td></td><td></td><td></td></tr>`;
+  }
+  for (const item of items) {
+    const icon = item.type === 'dir' ? '📁' : (item.icon || extIcon(item.name));
+    if (item.type === 'dir') {
+      const sub = path ? path + '/' + item.name : item.name;
+      html += `<tr class="dir-row" onclick="loadFolder('${sub}')">
+        <td><div class="file-name"><span class="fi">${icon}</span><span>${item.name}</span></div></td>
+        <td class="file-size">${item.size}</td>
+        <td class="file-date">${item.date}</td>
+        <td class="file-action"></td>
+      </tr>`;
+    } else {
+      html += `<tr>
+        <td><div class="file-name"><span class="fi">${icon}</span><span>${item.name}</span></div></td>
+        <td class="file-size">${item.size}</td>
+        <td class="file-date">${item.date}</td>
+        <td class="file-action"><span class="dl-btn" title="Download">↓</span></td>
+      </tr>`;
+    }
+  }
+  if (!html) html = `<tr><td colspan="4" style="color:var(--faint);padding:20px 8px;font-size:.82rem">No files indexed</td></tr>`;
+  tbody.innerHTML = html;
+}
+
+loadFolder('Music');
+</script>
 </body>
 </html>
