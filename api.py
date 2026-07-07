@@ -68,9 +68,15 @@ label{font-size:.78rem;color:#8b949e;display:block;margin-bottom:.4rem}
 input{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;
       font-size:.9rem;padding:.6rem .8rem;outline:none;margin-bottom:1rem}
 input:focus{border-color:#4fa8d8}
-button{width:100%;background:#1f77b4;color:#fff;border:none;border-radius:6px;
-       padding:.7rem;font-size:.92rem;font-weight:600;cursor:pointer}
-button:hover{background:#4fa8d8}
+.pw-wrap{position:relative;margin-bottom:1rem}
+.pw-wrap input{margin-bottom:0;padding-right:2.6rem}
+.pw-toggle{position:absolute;right:.7rem;top:50%;transform:translateY(-50%);
+           background:none;border:none;cursor:pointer;color:#555;font-size:1rem;
+           padding:0;line-height:1;width:auto}
+.pw-toggle:hover{color:#4fa8d8}
+.signin{width:100%;background:#1f77b4;color:#fff;border:none;border-radius:6px;
+        padding:.7rem;font-size:.92rem;font-weight:600;cursor:pointer;margin-top:.5rem}
+.signin:hover{background:#4fa8d8}
 .err{color:#f87171;font-size:.78rem;margin-top:.8rem;text-align:center}
 </style>
 </head>
@@ -78,15 +84,35 @@ button:hover{background:#4fa8d8}
 <div class="card">
   <h1>☁️ Cloud Drive</h1>
   <p>Sign in to access your backup</p>
-  <form method="post">
+  <form method="post" autocomplete="off" id="loginForm">
     <label>Username</label>
-    <input type="text" name="username" autocomplete="username" placeholder="username" value="{{ prefill }}">
+    <input type="text" name="username" id="usr" autocomplete="off"
+           placeholder="username" value="{{ prefill }}"
+           onkeydown="if(event.key==='Enter'){event.preventDefault();document.getElementById('pwd').focus();}">
     <label>Password</label>
-    <input type="password" name="password" autocomplete="current-password" placeholder="••••••••••">
-    <button type="submit">Sign in</button>
+    <div class="pw-wrap">
+      <input type="password" name="password" id="pwd" autocomplete="new-password" placeholder="••••••••••">
+      <button type="button" class="pw-toggle" onclick="togglePw()" id="eyeBtn">👁</button>
+    </div>
+    <button type="button" class="signin" onclick="document.getElementById('loginForm').submit()">Sign in</button>
     {% if error %}<div class="err">{{ error }}</div>{% endif %}
   </form>
 </div>
+<script>
+function togglePw(){
+  var f=document.getElementById('pwd');
+  var b=document.getElementById('eyeBtn');
+  if(f.type==='password'){f.type='text';b.textContent='🙈';}
+  else{f.type='password';b.textContent='👁';}
+}
+// Prevent Enter anywhere in the form from submitting (except inside password field)
+document.getElementById('loginForm').addEventListener('keydown',function(e){
+  if(e.key==='Enter'&&e.target.id==='pwd'){
+    e.preventDefault();
+    document.getElementById('loginForm').submit();
+  }
+});
+</script>
 </body>
 </html>"""
 _tree_cache: dict = {"json": None, "ts": 0}
