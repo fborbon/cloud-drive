@@ -1,5 +1,7 @@
 """Cloud Drive pre-signed URL API — runs as a separate service on port 8506."""
 
+import hashlib
+import hmac
 import io
 import mimetypes
 import os
@@ -11,7 +13,7 @@ from pathlib import Path
 
 import boto3
 import yaml
-from flask import Flask, jsonify, request, Response, stream_with_context
+from flask import Flask, jsonify, make_response, redirect, render_template_string, request, Response, stream_with_context
 
 app = Flask(__name__)
 
@@ -38,6 +40,52 @@ def _load_config() -> dict:
 CFG = _load_config()
 
 INDEX_DB = Path(os.environ.get("CLOUD_DRIVE_INDEX", "~/.cloud-drive/index.db")).expanduser()
+
+# ── Cookie auth ───────────────────────────────────────────────────────────────
+_AUTH_PASSWORD = os.environ.get("CLOUD_DRIVE_PASSWORD", "vryKly0IEbkf1xZFiLu8")
+_COOKIE_NAME   = "cdrv_auth"
+_COOKIE_DAYS   = 30
+
+def _auth_token() -> str:
+    secret = hmac.new(_AUTH_PASSWORD.encode(), b"cloud-drive-session-v1", hashlib.sha256).hexdigest()
+    return hmac.new(secret.encode(), b"ok", hashlib.sha256).hexdigest()
+
+_LOGIN_HTML = """<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Cloud Drive — Login</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#0d1117;color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+     display:flex;align-items:center;justify-content:center;min-height:100vh}
+.card{background:#161b22;border:1px solid #21262d;border-radius:12px;padding:2.5rem 2rem;width:100%;max-width:360px}
+h1{font-size:1.1rem;font-weight:700;color:#4fa8d8;margin-bottom:.3rem}
+p{font-size:.8rem;color:#8b949e;margin-bottom:1.8rem}
+label{font-size:.78rem;color:#8b949e;display:block;margin-bottom:.4rem}
+input{width:100%;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#e6edf3;
+      font-size:.9rem;padding:.6rem .8rem;outline:none;margin-bottom:1rem}
+input:focus{border-color:#4fa8d8}
+button{width:100%;background:#1f77b4;color:#fff;border:none;border-radius:6px;
+       padding:.7rem;font-size:.92rem;font-weight:600;cursor:pointer}
+button:hover{background:#4fa8d8}
+.err{color:#f87171;font-size:.78rem;margin-top:.8rem;text-align:center}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>☁️ Cloud Drive</h1>
+  <p>Enter your password to access your backup</p>
+  <form method="post">
+    <label>Password</label>
+    <input type="password" name="password" autofocus autocomplete="current-password" placeholder="••••••••••">
+    <button type="submit">Sign in</button>
+    {% if error %}<div class="err">{{ error }}</div>{% endif %}
+  </form>
+</div>
+</body>
+</html>"""
 _tree_cache: dict = {"json": None, "ts": 0}
 _TREE_TTL = 120  # seconds
 
@@ -82,6 +130,30 @@ def _build_tree_json() -> str:
 def _cors(resp):
     resp.headers["Access-Control-Allow-Origin"] = "*"
     return resp
+
+
+@app.route("/auth")
+def auth_check():
+    token = request.cookies.get(_COOKIE_NAME, "")
+    if token and hmac.compare_digest(token, _auth_token()):
+        return "", 200
+    return "", 401
+
+
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        pwd = request.form.get("password", "")
+        if hmac.compare_digest(pwd, _AUTH_PASSWORD):
+            resp = make_response(redirect("/"))
+            resp.set_cookie(
+                _COOKIE_NAME, _auth_token(),
+                max_age=_COOKIE_DAYS * 86400,
+                secure=True, httponly=True, samesite="Lax",
+            )
+            return resp
+        return render_template_string(_LOGIN_HTML, error="Wrong password"), 401
+    return render_template_string(_LOGIN_HTML, error=None)
 
 
 @app.route("/presign")
