@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cloud Drive — Personal S3 Backup</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --blue: #1f77b4; --blue-light: #4fa8d8; --bg: #0d1117; --card: #161b22;
+      --border: #21262d; --text: #e6edf3; --muted: #8b949e;
+    }
+    body { background: var(--bg); color: var(--text);
+           font-family: 'Segoe UI', system-ui, sans-serif; min-height: 100vh; }
+
+    header {
+      display: flex; align-items: center; gap: 14px;
+      padding: 20px 40px; border-bottom: 1px solid var(--border);
+    }
+    .logo { font-size: 1.6rem; line-height: 1; }
+    .header-text h1 { font-size: 1.15rem; font-weight: 700; color: var(--blue-light); }
+    .header-text p  { font-size: .8rem; color: var(--muted); margin-top: 2px; }
+    header a { margin-left: auto; text-decoration: none; }
+    .btn-live {
+      background: var(--blue); color: #fff; border: none;
+      padding: 9px 20px; border-radius: 8px; font-size: .88rem;
+      font-weight: 600; cursor: pointer; transition: background .2s;
+      display: inline-block;
+    }
+    .btn-live:hover { background: var(--blue-light); }
+
+    .hero {
+      max-width: 860px; margin: 50px auto 0; padding: 0 24px; text-align: center;
+    }
+    .hero h2 { font-size: 2rem; font-weight: 700; color: var(--text); line-height: 1.25; }
+    .hero h2 span { color: var(--blue-light); }
+    .hero p { color: var(--muted); font-size: 1rem; margin-top: 14px; line-height: 1.65; }
+    .hero-btns { display: flex; gap: 12px; justify-content: center; margin-top: 28px; flex-wrap: wrap; }
+    .btn-primary {
+      background: var(--blue); color: #fff; text-decoration: none;
+      padding: 12px 28px; border-radius: 8px; font-size: .95rem; font-weight: 600;
+      transition: background .2s;
+    }
+    .btn-primary:hover { background: var(--blue-light); }
+    .btn-secondary {
+      background: transparent; color: var(--text); text-decoration: none;
+      padding: 12px 28px; border-radius: 8px; font-size: .95rem; font-weight: 600;
+      border: 1px solid var(--border); transition: border-color .2s;
+    }
+    .btn-secondary:hover { border-color: var(--blue-light); color: var(--blue-light); }
+
+    .badge-row { display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; margin-top: 20px; }
+    .badge {
+      background: rgba(31,119,180,.1); border: 1px solid rgba(31,119,180,.25);
+      color: var(--blue-light); padding: 4px 12px; border-radius: 20px; font-size: .75rem;
+    }
+
+    .features { max-width: 960px; margin: 64px auto 0; padding: 0 24px; }
+    .features h3 { font-size: 1.3rem; font-weight: 700; text-align: center; color: var(--text); margin-bottom: 32px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 16px; }
+    .card {
+      background: var(--card); border: 1px solid var(--border); border-radius: 10px;
+      padding: 22px 20px; transition: border-color .2s;
+    }
+    .card:hover { border-color: var(--blue); }
+    .card-icon { font-size: 1.6rem; margin-bottom: 10px; }
+    .card h4 { font-size: .9rem; font-weight: 700; color: var(--text); margin-bottom: 6px; }
+    .card p { font-size: .8rem; color: var(--muted); line-height: 1.55; }
+
+    .stack { max-width: 860px; margin: 56px auto 0; padding: 0 24px; }
+    .stack h3 { font-size: 1.3rem; font-weight: 700; text-align: center; color: var(--text); margin-bottom: 24px; }
+    .stack-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .stack-item {
+      background: var(--card); border: 1px solid var(--border);
+      padding: 8px 16px; border-radius: 6px; font-size: .8rem; color: var(--muted);
+    }
+    .stack-item strong { color: var(--text); }
+
+    .cta { text-align: center; padding: 60px 24px; }
+    .cta h3 { font-size: 1.4rem; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+    .cta p { color: var(--muted); margin-bottom: 24px; }
+
+    footer { border-top: 1px solid var(--border); padding: 20px 40px; text-align: center; }
+    footer p { font-size: .78rem; color: var(--muted); }
+    footer a { color: var(--blue-light); text-decoration: none; }
+
+    @media (max-width: 600px) {
+      header { padding: 16px 20px; }
+      .hero { margin-top: 36px; }
+      .hero h2 { font-size: 1.5rem; }
+      .features, .stack { padding: 0 16px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="logo">☁️</div>
+  <div class="header-text">
+    <h1>Cloud Drive</h1>
+    <p>Personal S3 Glacier Backup</p>
+  </div>
+  <a href="https://drive.forwardforecasting.eu" class="btn-live" target="_blank">Open App →</a>
+</header>
+
+<section class="hero">
+  <h2>Personal cloud backup<br>to <span>S3 Glacier</span> — cheap and permanent</h2>
+  <p>
+    A self-hosted backup system that syncs files from external hard drives to AWS S3 Glacier
+    Instant Retrieval. Browse and stream your backed-up files from anywhere with a clean web UI.
+    Install as a PWA on your phone.
+  </p>
+  <div class="hero-btns">
+    <a href="https://drive.forwardforecasting.eu" class="btn-primary" target="_blank">Open Cloud Drive</a>
+    <a href="https://github.com/fborbon/cloud-drive" class="btn-secondary" target="_blank">View on GitHub</a>
+  </div>
+  <div class="badge-row">
+    <span class="badge">AWS S3 Glacier IR</span>
+    <span class="badge">$0.004 / GB / month</span>
+    <span class="badge">Move detection</span>
+    <span class="badge">PWA ready</span>
+    <span class="badge">WMA transcoding</span>
+    <span class="badge">Multi-thread upload</span>
+  </div>
+</section>
+
+<section class="features">
+  <h3>Features</h3>
+  <div class="grid">
+    <div class="card">
+      <div class="card-icon">🚀</div>
+      <h4>Fast Incremental Sync</h4>
+      <p>SHA-256 computed in a single read pass during upload. Skips unchanged files. 10 parallel threads.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔄</div>
+      <h4>Move Detection</h4>
+      <p>Reorganizing files locally triggers S3 CopyObject — no re-upload, instant and free.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📂</div>
+      <h4>File Browser</h4>
+      <p>Lazy-loaded folder tree, file search, image preview, video and audio playback, PDF and text viewer.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🎵</div>
+      <h4>Media Player</h4>
+      <p>Playlist mode, slideshow, shuffle, autoplay. WMA files transcoded on-the-fly via ffmpeg.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">📱</div>
+      <h4>PWA for Mobile</h4>
+      <p>Installable on iOS and Android. Sidebar hidden on small screens. Touch-friendly resize handles.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">💰</div>
+      <h4>Ultra-low Cost</h4>
+      <p>S3 Glacier Instant Retrieval at $0.004/GB/month. 350 GB costs ~$1.40/month. Millisecond retrieval.</p>
+    </div>
+  </div>
+</section>
+
+<section class="stack">
+  <h3>Built with</h3>
+  <div class="stack-grid">
+    <div class="stack-item"><strong>Python</strong> · sync engine</div>
+    <div class="stack-item"><strong>Streamlit</strong> · web UI</div>
+    <div class="stack-item"><strong>Flask</strong> · presign API</div>
+    <div class="stack-item"><strong>boto3</strong> · S3 client</div>
+    <div class="stack-item"><strong>SQLite</strong> · local index</div>
+    <div class="stack-item"><strong>ffmpeg</strong> · WMA transcode</div>
+    <div class="stack-item"><strong>AWS S3</strong> · Glacier IR</div>
+    <div class="stack-item"><strong>nginx</strong> · reverse proxy</div>
+    <div class="stack-item"><strong>EC2</strong> · hosting</div>
+  </div>
+</section>
+
+<section class="cta">
+  <h3>Ready to use</h3>
+  <p>Deployed at drive.forwardforecasting.eu · CI/CD via GitHub Actions</p>
+  <a href="https://drive.forwardforecasting.eu" class="btn-primary" target="_blank">Open Cloud Drive →</a>
+</section>
+
+<footer>
+  <p>
+    <a href="https://drive.forwardforecasting.eu" target="_blank">Live App</a> ·
+    <a href="https://github.com/fborbon/cloud-drive" target="_blank">GitHub</a> ·
+    <a href="https://forwardforecasting.eu" target="_blank">forwardforecasting.eu</a>
+  </p>
+</footer>
+
+</body>
+</html>

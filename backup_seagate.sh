@@ -24,11 +24,29 @@ run_sync() {
 
 echo "Cloud-Drive backup started: $(date)" | tee -a "$LOG"
 
+echo ""
+echo "============================================================"
+echo "SYNC DELETIONS: removing S3 objects deleted locally"
+echo "Started: $(date)"
+echo "============================================================"
+$PYTHON "$CD/sync_deletions.py" || {
+    echo "[ERROR] Deletion sync failed — continuing with uploads."
+}
+
 run_sync "/media/patito/seagate/Personal/Datos familia"
 run_sync "/media/patito/seagate/Personal/Documentos"
 run_sync "/media/patito/seagate/Personal/Musica"
 run_sync "/media/patito/seagate/Personal/Programar"
 run_sync "/media/patito/seagate/Personal/Videos/Baile/Salsemba"
+
+echo ""
+echo "============================================================"
+echo "FINALIZE: deleting truly removed files from S3"
+echo "Started: $(date)"
+echo "============================================================"
+$PYTHON "$CD/finalize_sync.py" || {
+    echo "[ERROR] Finalize failed — check output above."
+}
 
 echo ""
 echo "============================================================"

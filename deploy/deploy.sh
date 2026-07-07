@@ -28,6 +28,14 @@ ok "Code synced"
 
 # ── Install deps on server ────────────────────────────────────────────────────
 
+step "Installing system dependencies on server"
+$SSH -i "$KEY" "$SERVER" bash <<'REMOTE'
+    if ! command -v ffmpeg &>/dev/null; then
+        sudo apt-get install -y -qq ffmpeg
+    fi
+REMOTE
+ok "ffmpeg ready"
+
 step "Installing Python dependencies on server"
 $SSH -i "$KEY" "$SERVER" bash <<'REMOTE'
     cd ~/cloud-drive
@@ -36,7 +44,8 @@ $SSH -i "$KEY" "$SERVER" bash <<'REMOTE'
     fi
     source venv/bin/activate
     pip install --quiet --upgrade pip
-    pip install --quiet boto3 pyyaml streamlit pandas
+    pip install --quiet boto3 pyyaml streamlit pandas pillow
+    python3 deploy/pwa/generate_icons.py
 REMOTE
 ok "Dependencies installed"
 
@@ -62,69 +71,22 @@ ok "Services running (web:8505, api:8506)"
 
 # ── SSL certificate ───────────────────────────────────────────────────────────
 
-if [[ "${1:-}" == "--ssl" ]]; then
-    step "Provisioning SSL certificate"
-    $SSH -i "$KEY" "$SERVER" bash <<'REMOTE'
-        sudo certbot certonly --nginx \
-            -d drive.forwardforecasting.eu \
-            --non-interactive \
-            --agree-tos \
-            --email correoprincipal2021@hotmail.com \
-            --expand
+step "Installing nginx config"
+rsync -az -e "ssh -i $KEY" \
+    "$LOCAL_DIR/deploy/nginx-drive.conf" \
+    "$SERVER:/tmp/nginx-drive.conf"
+
+$SSH -i "$KEY" "$SERVER" bash <<'REMOTE'
+    sudo cp /tmp/nginx-drive.conf /etc/nginx/sites-available/drive.conf
+    sudo ln -sf /etc/nginx/sites-available/drive.conf /etc/nginx/sites-enabled/drive.conf
+    sudo nginx -t
+    sudo systemctl reload nginx
 REMOTE
-    ok "SSL certificate issued"
-
-    step "Installing nginx config (with SSL)"
-    rsync -az -e "ssh -i $KEY" \
-        "$LOCAL_DIR/deploy/nginx-drive.conf" \
-        "$SERVER:/tmp/nginx-drive.conf"
-
-    $SSH -i "$KEY" "$SERVER" bash <<'REMOTE'
-        sudo cp /tmp/nginx-drive.conf /etc/nginx/sites-available/drive.conf
-        sudo ln -sf /etc/nginx/sites-available/drive.conf /etc/nginx/sites-enabled/drive.conf
-        sudo nginx -t
-        sudo systemctl reload nginx
-REMOTE
-    ok "nginx config active with SSL"
-
-else
-    step "Installing nginx config (HTTP only)"
-    $SSH -i "$KEY" "$SERVER" bash <<'REMOTE'
-        cat > /tmp/nginx-drive-http.conf <<'EOF'
-server {
-    listen 80;
-    server_name drive.forwardforecasting.eu;
-
-    location / {
-        proxy_pass         http://127.0.0.1:8505;
-        proxy_http_version 1.1;
-        proxy_set_header   Upgrade $http_upgrade;
-        proxy_set_header   Connection "upgrade";
-        proxy_set_header   Host $host;
-        proxy_set_header   X-Real-IP $remote_addr;
-        proxy_read_timeout 86400;
-    }
-}
-EOF
-        sudo cp /tmp/nginx-drive-http.conf /etc/nginx/sites-available/drive.conf
-        sudo ln -sf /etc/nginx/sites-available/drive.conf /etc/nginx/sites-enabled/drive.conf
-        sudo nginx -t
-        sudo systemctl reload nginx
-REMOTE
-    ok "HTTP nginx config active"
-    warn "Run with --ssl once DNS points to 54.78.82.101"
-fi
+ok "nginx config active"
 
 # ── Final status ──────────────────────────────────────────────────────────────
 
 echo ""
 echo "────────────────────────────────────────────────────────"
-$SSH -i "$KEY" "$SERVER" bash -c "
-    echo 'Streamlit:' \$(systemctl is-active cloud-drive-web)
-    curl -sf http://localhost:8505/_stcore/health && echo 'Health: OK' || echo 'Health: not ready yet'
-"
-if [[ "${1:-}" == "--ssl" ]]; then
-    ok "Live at → https://drive.forwardforecasting.eu/"
-else
-    ok "Live at → http://drive.forwardforecasting.eu/ (HTTP only)"
-fi
+$SSH -i "$KEY" "$SERVER" "systemctl is-active cloud-drive-web && curl -sf http://localhost:8505/_stcore/health && echo 'Health: OK' || echo 'Health: not ready yet'"
+ok "Live at → https://drive.forwardforecasting.eu/"

@@ -1,6 +1,8 @@
 """Core sync logic: walk local path, compare with index, upload new/changed files."""
 
 import fnmatch
+import hashlib
+import json
 import os
 from pathlib import Path
 
@@ -51,6 +53,18 @@ def run_sync(
     client = storage.make_client(cfg)
     transfer_config = storage.make_transfer_config(cfg)
     index = idx_mod.Index(cfg["index_db"])
+
+    # Load pending deletions for move detection (sha256 → {s3_key, size})
+    pending_path = Path(cfg["index_db"]).expanduser().parent / "pending_deletions.json"
+    pending: dict = {}
+    size_index: dict[int, list[str]] = {}  # size → [sha256, ...]
+    if pending_path.exists():
+        try:
+            pending = json.loads(pending_path.read_text()) or {}
+            for sha, info in pending.items():
+                size_index.setdefault(info["size"], []).append(sha)
+        except Exception:
+            pending = {}
 
     bucket = cfg["bucket"]
     if not storage.bucket_exists(client, bucket):
@@ -124,14 +138,34 @@ def run_sync(
                 progress.update(task_id, advance=n_bytes)
 
             try:
-                checksum = idx_mod.sha256(local_path)
-                etag = storage.upload(
-                    client, local_path, bucket, s3_key,
-                    storage_class, transfer_config, _progress,
-                )
-                index.upsert(local_path, s3_key, checksum, etag, storage_class)
-                uploaded += 1
-                uploaded_bytes += file_size
+                # Move detection: if a pending deletion has same size, pre-hash to confirm
+                moved = False
+                if size_index and file_size in size_index:
+                    h = hashlib.sha256()
+                    with open(local_path, "rb") as f:
+                        for chunk in iter(lambda: f.read(1 << 20), b""):
+                            h.update(chunk)
+                    pre_sha = h.hexdigest()
+                    if pre_sha in pending:
+                        old_s3_key = pending[pre_sha]["s3_key"]
+                        etag = storage.copy_object(client, bucket, old_s3_key, s3_key, storage_class)
+                        index.upsert(local_path, s3_key, pre_sha, etag, storage_class)
+                        del pending[pre_sha]
+                        size_index[file_size] = [s for s in size_index[file_size] if s != pre_sha]
+                        pending_path.write_text(json.dumps(pending))
+                        console.print(f"  [cyan]MOVED[/cyan] {local_path.name[:50]} (CopyObject, no re-upload)")
+                        uploaded += 1
+                        uploaded_bytes += file_size
+                        moved = True
+
+                if not moved:
+                    etag, checksum = storage.upload(
+                        client, local_path, bucket, s3_key,
+                        storage_class, transfer_config, _progress,
+                    )
+                    index.upsert(local_path, s3_key, checksum, etag, storage_class)
+                    uploaded += 1
+                    uploaded_bytes += file_size
             except Exception as exc:
                 console.print(f"  [red]FAILED[/red] {relative}: {exc}")
                 failed += 1

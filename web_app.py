@@ -14,6 +14,29 @@ import yaml
 
 st.set_page_config(page_title="Cloud Drive", page_icon="☁️", layout="wide")
 
+st.markdown("""
+<link rel="manifest" href="/manifest.json">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="CloudDrive">
+<link rel="apple-touch-icon" href="/pwa/icons/icon-192.png">
+<meta name="theme-color" content="#1f77b4">
+<script>
+if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js', {scope: '/'})
+        .catch(e => console.warn('SW registration failed:', e));
+}
+</script>
+<style>
+@media (max-width: 768px) {
+    section[data-testid="stSidebar"],
+    div[data-testid="stSidebarCollapsedControl"] { display: none !important; }
+    .stMainBlockContainer { padding-left: 1rem !important; padding-right: 1rem !important; }
+}
+</style>
+""", unsafe_allow_html=True)
+
 # ── config ────────────────────────────────────────────────────────────────────
 
 CONFIG_SEARCH = [
@@ -56,66 +79,6 @@ def _human(n: int) -> str:
 
 def _has_index() -> bool:
     return INDEX_DB.exists()
-
-
-# ── tree ──────────────────────────────────────────────────────────────────────
-
-@st.cache_data(ttl=120, show_spinner="Building folder tree…")
-def _build_tree() -> dict:
-    prefix = CFG["s3_prefix"].rstrip("/") + "/"
-
-    if _has_index():
-        conn  = sqlite3.connect(INDEX_DB)
-        rows  = conn.execute("SELECT s3_key, size, synced_at FROM files").fetchall()
-        conn.close()
-        items = [(r[0], r[1], (r[2] or "")[:10]) for r in rows]
-    else:
-        try:
-            client    = boto3.client("s3", region_name=CFG["region"])
-            paginator = client.get_paginator("list_objects_v2")
-            items     = []
-            for page in paginator.paginate(Bucket=CFG["bucket"], Prefix=prefix):
-                for obj in page.get("Contents", []):
-                    items.append((obj["Key"], obj["Size"],
-                                  obj["LastModified"].strftime("%Y-%m-%d")))
-        except Exception as exc:
-            st.error(f"Could not reach S3: {exc}")
-            return {}
-
-    tree: dict = {}
-
-    def node(path: str) -> dict:
-        if path not in tree:
-            tree[path] = {"dirs": {}, "files": []}
-        return tree[path]
-
-    for key, size, synced in items:
-        rel    = key[len(prefix):] if key.startswith(prefix) else key
-        if not rel:
-            continue
-        parts  = rel.rstrip("/").split("/")
-        fname  = parts[-1]
-        fparts = parts[:-1]
-        fpath  = "/".join(fparts)
-
-        node(fpath)["files"].append({"n": fname, "s": size, "d": synced, "k": key})
-
-        for i in range(len(fparts)):
-            parent     = "/".join(fparts[:i]) if i > 0 else ""
-            child      = fparts[i]
-            d          = node(parent)["dirs"]
-            if child not in d:
-                d[child] = {"b": 0, "c": 0}
-            d[child]["b"] += size
-            d[child]["c"] += 1
-            node("/".join(fparts[:i + 1]))
-
-    return tree
-
-
-@st.cache_data(ttl=120)
-def _tree_json() -> str:
-    return json.dumps(_build_tree(), separators=(",", ":"))
 
 
 # ── overview helpers ──────────────────────────────────────────────────────────
@@ -193,7 +156,7 @@ with st.sidebar:
 
 # ── tabs ──────────────────────────────────────────────────────────────────────
 
-tab_overview, tab_browse, tab_log = st.tabs(["📊 Overview", "📂 Browse", "📋 Sync Log"])
+tab_overview, tab_browse, tab_media, tab_log = st.tabs(["📊 Overview", "📂 Browse", "🎬 Media Player", "📋 Sync Log"])
 
 # ── Overview ──────────────────────────────────────────────────────────────────
 
@@ -228,12 +191,11 @@ with tab_overview:
 # ── Browse ────────────────────────────────────────────────────────────────────
 
 with tab_browse:
-    tree_data = _tree_json()
-
     EXPLORER_HTML = f"""<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 *{{box-sizing:border-box;margin:0;padding:0}}
 html,body{{height:100%;overflow:hidden}}
@@ -260,8 +222,9 @@ body{{display:flex;background:#181818;color:#ccc;font-family:-apple-system,Blink
 .tree-count{{font-size:.62rem;color:#444;flex-shrink:0;margin-left:2px}}
 
 /* ── Resize handle ── */
-#resize{{width:5px;cursor:col-resize;background:transparent;flex-shrink:0;transition:background .15s;z-index:10}}
+#resize{{width:5px;cursor:col-resize;background:transparent;flex-shrink:0;transition:background .15s;z-index:10;touch-action:none}}
 #resize:hover,#resize.drag{{background:#f97316}}
+@media(max-width:768px){{#resize{{width:16px;background:rgba(249,115,22,.15)}}}}
 
 /* ── Main panel ── */
 #main{{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}}
@@ -281,8 +244,12 @@ body{{display:flex;background:#181818;color:#ccc;font-family:-apple-system,Blink
 .folder-row:hover{{background:rgba(255,255,255,.05)}}
 .folder-row:hover .fr-name{{color:#fff}}
 .fr-icon{{font-size:.95rem;flex-shrink:0}}
-.fr-name{{font-size:.85rem;color:#ddd;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
-.fr-meta{{font-size:.72rem;color:#555;flex-shrink:0;text-align:right;white-space:nowrap}}
+.fr-info{{flex:1;min-width:0;display:flex;flex-direction:column}}
+.fr-name{{font-size:.85rem;color:#ddd;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}}
+.fr-meta{{font-size:.72rem;color:#555;white-space:nowrap}}
+@media(max-width:500px){{
+  .fr-name{{white-space:normal;word-break:break-word;overflow:visible;text-overflow:unset}}
+}}
 
 /* ── File table ── */
 .file-table{{width:100%;border-collapse:collapse;margin-top:.25rem}}
@@ -352,7 +319,6 @@ body{{display:flex;background:#181818;color:#ccc;font-family:-apple-system,Blink
 </div>
 
 <script>
-const TREE    = {tree_data};
 const API     = '{API_URL}';
 const IMG_EXT = new Set(['jpg','jpeg','png','gif','webp','bmp','svg','avif','ico','tiff','tif']);
 const VID_EXT = new Set(['mp4','mov','m4v','webm','mkv','avi','3gp','ogv']);
@@ -360,7 +326,26 @@ const AUD_EXT = new Set(['mp3','wav','m4a','ogg','flac','aac','opus','wma']);
 const PDF_EXT = new Set(['pdf']);
 const TXT_EXT = new Set(['txt','md','json','xml','csv','log','yaml','yml','ini','toml','sh','bash','py','js','ts','jsx','tsx','html','css','scss','sql','conf','cfg','env','gitignore','dockerfile','makefile','rs','go','java','c','cpp','h','rb','php']);
 
+let TREE = {{}};
 const state = {{ path:[], expanded:new Set(), search:'', folderFilter:'', page:0, PAGE:200 }};
+
+// Show loading overlay until tree is ready
+const loadingDiv = document.createElement('div');
+loadingDiv.id = 'tree-loading';
+loadingDiv.style.cssText = 'position:fixed;inset:0;background:#181818;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;z-index:9999;color:#555;font-size:.85rem';
+loadingDiv.innerHTML = '<div style="font-size:2rem">☁️</div><div>Loading file index…</div>';
+document.body.appendChild(loadingDiv);
+
+fetch(`${{API}}/tree`)
+  .then(r => r.json())
+  .then(data => {{
+    TREE = data;
+    loadingDiv.remove();
+    render();
+  }})
+  .catch(e => {{
+    loadingDiv.innerHTML = `<div style="color:#f87171">⚠️ Failed to load index: ${{e.message}}</div>`;
+  }});
 
 function hu(n) {{
   const u=['B','KB','MB','GB','TB'];
@@ -562,8 +547,10 @@ function renderContent() {{
       const row=document.createElement('div');
       row.className='folder-row';
       row.innerHTML=`<span class="fr-icon">📁</span>
-        <span class="fr-name">${{esc(name)}}</span>
-        <span class="fr-meta">${{info.c?info.c.toLocaleString()+' items':''}}${{info.b?' &nbsp;·&nbsp; '+hu(info.b):''}}</span>`;
+        <div class="fr-info">
+          <span class="fr-name">${{esc(name)}}</span>
+          <span class="fr-meta">${{info.c?info.c.toLocaleString()+' items':''}}${{info.b?' · '+hu(info.b):''}}</span>
+        </div>`;
       row.addEventListener('click',()=>{{
         const np=[...state.path,name];
         state.expanded.add(ps(np));
@@ -643,12 +630,18 @@ function renderContent() {{
 document.getElementById('rail-search').addEventListener('input',e=>{{state.folderFilter=e.target.value;renderTree();}});
 document.getElementById('search-bar').addEventListener('input',e=>{{state.search=e.target.value;state.page=0;renderContent();}});
 
-// ── Resize handle ─────────────────────────────────────────────────────────────
+// ── Resize handle (mouse + touch) ─────────────────────────────────────────────
 const handle=document.getElementById('resize'), rail=document.getElementById('rail');
 let drag=false,sx=0,sw=0;
-handle.addEventListener('mousedown',e=>{{drag=true;sx=e.clientX;sw=rail.offsetWidth;handle.classList.add('drag');document.body.style.cssText='cursor:col-resize;user-select:none';e.preventDefault();}});
-document.addEventListener('mousemove',e=>{{if(!drag)return;rail.style.width=Math.max(150,Math.min(600,sw+e.clientX-sx))+'px';}});
-document.addEventListener('mouseup',()=>{{drag=false;handle.classList.remove('drag');document.body.style.cssText='';}});
+function startDrag(x){{drag=true;sx=x;sw=rail.offsetWidth;handle.classList.add('drag');document.body.style.cssText='cursor:col-resize;user-select:none';}}
+function moveDrag(x){{if(!drag)return;rail.style.width=Math.max(60,Math.min(600,sw+x-sx))+'px';}}
+function endDrag(){{drag=false;handle.classList.remove('drag');document.body.style.cssText='';}}
+handle.addEventListener('mousedown',e=>{{startDrag(e.clientX);e.preventDefault();}});
+document.addEventListener('mousemove',e=>moveDrag(e.clientX));
+document.addEventListener('mouseup',endDrag);
+handle.addEventListener('touchstart',e=>{{startDrag(e.touches[0].clientX);e.preventDefault();}},{{passive:false}});
+document.addEventListener('touchmove',e=>{{if(drag){{moveDrag(e.touches[0].clientX);e.preventDefault();}}}},{{passive:false}});
+document.addEventListener('touchend',endDrag);
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 function render(){{renderTree();renderBreadcrumb();renderContent();}}
@@ -658,6 +651,447 @@ render();
 </html>"""
 
     components.html(EXPLORER_HTML, height=720, scrolling=False)
+
+# ── Media Player ─────────────────────────────────────────────────────────────
+
+with tab_media:
+    PLAYER_HTML = f"""<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+*,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
+html,body{{height:100%;overflow:hidden}}
+body{{display:flex;background:#181818;color:#ccc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px}}
+
+#rail{{width:240px;min-width:140px;max-width:480px;background:#101010;border-right:1px solid #1c1c1c;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}}
+#rail-header{{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:#f97316;padding:.7rem .8rem .3rem;font-weight:700;flex-shrink:0}}
+#rail-search{{display:block;width:calc(100% - 1rem);margin:.2rem .5rem .3rem;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:5px;color:#ccc;font-size:.75rem;padding:.3rem .5rem;outline:none;flex-shrink:0}}
+#rail-search:focus{{border-color:#f97316}}
+#tree{{flex:1;overflow-y:auto;padding-bottom:.5rem}}
+
+.tree-row{{display:flex;align-items:center;gap:3px;padding:2px 6px 2px 0;border-radius:4px;cursor:pointer;transition:background .1s;user-select:none}}
+.tree-row:hover{{background:rgba(255,255,255,.06)}}
+.tree-row.active{{background:rgba(249,115,22,.18)}}
+.tree-row.active .tree-label{{color:#ffd0ea;font-weight:600}}
+.tree-arrow{{flex-shrink:0;width:14px;font-size:.6rem;color:#555;text-align:center;visibility:hidden}}
+.tree-arrow.vis{{visibility:visible}}
+.tree-icon{{flex-shrink:0;font-size:.78rem}}
+.tree-label{{font-size:.78rem;color:#aaa;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}}
+.tree-count{{font-size:.62rem;color:#444;flex-shrink:0}}
+
+#resize{{width:5px;cursor:col-resize;background:transparent;flex-shrink:0;transition:background .15s;touch-action:none}}
+#resize:hover,#resize.drag{{background:#f97316}}
+@media(max-width:768px){{#resize{{width:16px;background:rgba(249,115,22,.15)}}}}
+
+#main{{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}}
+
+#now-playing{{padding:.45rem .8rem;border-bottom:1px solid #1c1c1c;flex-shrink:0;display:flex;align-items:center;gap:.6rem;min-height:38px}}
+#np-icon{{font-size:1rem;flex-shrink:0}}
+#np-info{{flex:1;min-width:0}}
+#np-name{{font-size:.8rem;color:#ddd;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}}
+#np-meta{{font-size:.68rem;color:#444}}
+#np-pos{{font-size:.7rem;color:#f97316;flex-shrink:0;font-family:ui-monospace,monospace;white-space:nowrap}}
+
+#player-area{{flex:1;display:flex;align-items:center;justify-content:center;background:#0d0d0d;overflow:hidden;position:relative;min-height:0}}
+#player-video{{max-width:100%;max-height:100%;display:none;outline:none}}
+#player-img{{max-width:100%;max-height:100%;object-fit:contain;display:none}}
+#player-audio-wrap{{display:none;flex-direction:column;align-items:center;gap:1.5rem;padding:2.5rem}}
+#player-audio-art{{font-size:4.5rem;line-height:1}}
+#player-audio{{width:300px}}
+#player-empty{{color:#2a2a2a;font-size:.9rem;text-align:center;padding:2rem;line-height:2.2}}
+#player-loading{{display:none;position:absolute;inset:0;background:rgba(0,0,0,.5);align-items:center;justify-content:center;color:#555;font-size:.82rem}}
+
+#img-progress-wrap{{display:none;position:absolute;bottom:0;left:0;right:0;height:3px;background:rgba(255,255,255,.07)}}
+#img-progress-bar{{height:100%;background:#f97316;width:0%}}
+
+.img-nav{{display:none;position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,.45);border:none;color:rgba(255,255,255,.7);font-size:1.6rem;line-height:1;padding:.5rem .55rem;cursor:pointer;border-radius:4px;transition:background .15s,color .15s,opacity .15s;z-index:10;opacity:0}}
+#player-area:hover .img-nav{{opacity:1}}
+.img-nav:hover{{background:rgba(0,0,0,.75);color:#fff}}
+#img-prev{{left:.6rem}}
+#img-next{{right:.6rem}}
+
+#controls{{display:flex;align-items:center;gap:.4rem;padding:.45rem .7rem;border-top:1px solid #1c1c1c;flex-shrink:0;flex-wrap:wrap}}
+.ctrl-btn{{background:#1e1e1e;border:1px solid #2a2a2a;color:#aaa;padding:.28rem .65rem;border-radius:4px;cursor:pointer;font-size:.8rem;transition:all .15s;white-space:nowrap}}
+.ctrl-btn:hover{{background:#282828;color:#eee}}
+.ctrl-btn.on{{background:rgba(249,115,22,.15);border-color:#f97316;color:#f97316}}
+.ctrl-btn:disabled{{opacity:.3;cursor:default}}
+.ctrl-sep{{width:1px;height:18px;background:#252525;flex-shrink:0}}
+.ctrl-lbl{{font-size:.68rem;color:#444}}
+#volume-wrap{{display:flex;align-items:center;gap:.4rem;margin-left:auto}}
+#volume{{width:75px;accent-color:#f97316;cursor:pointer}}
+#slideshow-speed{{background:#1e1e1e;border:1px solid #2a2a2a;color:#aaa;border-radius:4px;font-size:.73rem;padding:.22rem .35rem;cursor:pointer;outline:none}}
+
+#pl-panel{{width:260px;min-width:160px;background:#101010;border-left:1px solid #1c1c1c;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}}
+#pl-header{{padding:.6rem .7rem .3rem;flex-shrink:0;border-bottom:1px solid #141414}}
+#pl-title{{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:#f97316;font-weight:700}}
+#pl-count{{font-size:.67rem;color:#333;margin-top:2px}}
+#pl-list{{flex:1;overflow-y:auto}}
+.pl-item{{display:flex;align-items:center;gap:.45rem;padding:.32rem .55rem;cursor:pointer;transition:background .1s;border-bottom:1px solid #111}}
+.pl-item:hover{{background:rgba(255,255,255,.04)}}
+.pl-item.current{{background:rgba(249,115,22,.1);border-left:2px solid #f97316}}
+.pl-item.current .pl-name{{color:#f97316;font-weight:600}}
+.pl-idx{{font-size:.6rem;color:#2a2a2a;width:20px;text-align:right;flex-shrink:0;font-family:ui-monospace,monospace}}
+.pl-type{{font-size:.75rem;flex-shrink:0}}
+.pl-name{{font-size:.73rem;color:#777;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;min-width:0}}
+.pl-empty{{color:#2a2a2a;font-size:.77rem;padding:1rem .7rem;line-height:1.7}}
+</style>
+</head>
+<body>
+
+<div id="rail">
+  <div id="rail-header">📁 Folders</div>
+  <input id="rail-search" type="text" placeholder="Filter folders…">
+  <div id="tree"></div>
+</div>
+
+<div id="resize"></div>
+
+<div id="main">
+  <div id="now-playing">
+    <span id="np-icon">🎵</span>
+    <div id="np-info">
+      <div id="np-name" style="color:#2a2a2a">Select a folder to start playing</div>
+      <div id="np-meta"></div>
+    </div>
+    <span id="np-pos"></span>
+  </div>
+
+  <div id="player-area">
+    <video id="player-video" controls></video>
+    <img id="player-img" alt="">
+    <div id="player-audio-wrap">
+      <div id="player-audio-art">🎵</div>
+      <audio id="player-audio" controls></audio>
+    </div>
+    <div id="player-empty">📂 Open a folder from the left panel<br>to load its media as a playlist</div>
+    <div id="player-loading">⏳ Loading…</div>
+    <button class="img-nav" id="img-prev">&#8249;</button>
+    <button class="img-nav" id="img-next">&#8250;</button>
+    <div id="img-progress-wrap"><div id="img-progress-bar"></div></div>
+  </div>
+
+  <div id="controls">
+    <button class="ctrl-btn" id="btn-prev" disabled>⏮</button>
+    <button class="ctrl-btn" id="btn-play" disabled>⏸</button>
+    <button class="ctrl-btn" id="btn-next" disabled>⏭</button>
+    <div class="ctrl-sep"></div>
+    <button class="ctrl-btn"     id="btn-autoplay">⏩ Auto</button>
+    <button class="ctrl-btn"     id="btn-shuffle">🔀 Shuffle</button>
+    <button class="ctrl-btn"     id="btn-loop">🔁 Loop</button>
+    <div class="ctrl-sep"></div>
+    <span class="ctrl-lbl">🖼 Slide</span>
+    <select id="slideshow-speed">
+      <option value="3">3 s</option>
+      <option value="5" selected>5 s</option>
+      <option value="10">10 s</option>
+      <option value="20">20 s</option>
+    </select>
+    <div id="volume-wrap">
+      <span class="ctrl-lbl">🔊</span>
+      <input type="range" id="volume" min="0" max="1" step="0.05" value="0.8">
+    </div>
+  </div>
+</div>
+
+<div id="pl-panel">
+  <div id="pl-header">
+    <div id="pl-title">Playlist</div>
+    <div id="pl-count">No folder selected</div>
+  </div>
+  <div id="pl-list"><div class="pl-empty">Select a folder from the tree to populate the playlist.</div></div>
+</div>
+
+<script>
+const API  = '{API_URL}';
+let TREE = {{}};
+
+const IMG = new Set(['jpg','jpeg','png','gif','webp','bmp','avif','tiff','tif','heic','heif']);
+const VID = new Set(['mp4','mov','m4v','webm','mkv','avi','3gp','ogv']);
+const AUD = new Set(['mp3','wav','m4a','ogg','flac','aac','opus','wma']);
+
+function ext(name){{const i=name.lastIndexOf('.');return i>=0?name.slice(i+1).toLowerCase():'';}}
+function mtype(name){{const e=ext(name);return IMG.has(e)?'img':VID.has(e)?'vid':AUD.has(e)?'aud':null;}}
+function ticon(t,name){{if(t==='img')return '🖼';if(t==='vid')return '🎬';if(t==='aud')return name&&isWma(name)?'🔄':'🎵';return '📄';}}
+function sortedKeys(o){{return Object.keys(o).sort((a,b)=>a.toLowerCase().localeCompare(b.toLowerCase()));}}
+function ps(parts){{return parts.join('/');}}
+function esc(s){{return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}}
+
+const S = {{
+  treePath:[],expanded:new Set(),folderFilter:'',
+  playlist:[],idx:-1,
+  autoplay:false,shuffle:false,loop:false,
+  slideshowSecs:5,imgTimer:null,imgRaf:null,imgStart:null
+}};
+
+function isWma(name){{return name.toLowerCase().endsWith('.wma');}}
+
+async function presign(key){{
+  const r=await fetch(`${{API}}/presign?key=${{encodeURIComponent(key)}}`);
+  const d=await r.json();
+  if(d.error) throw new Error(d.error);
+  return d.url;
+}}
+
+async function resolveUrl(item){{
+  if(isWma(item.n)) return `${{API}}/transcode?key=${{encodeURIComponent(item.k)}}`;
+  return presign(item.k);
+}}
+
+const elVideo   =document.getElementById('player-video');
+const elImg     =document.getElementById('player-img');
+const elAudWrap =document.getElementById('player-audio-wrap');
+const elAudio   =document.getElementById('player-audio');
+const elEmpty   =document.getElementById('player-empty');
+const elLoading =document.getElementById('player-loading');
+const elPbar    =document.getElementById('img-progress-bar');
+const elPbarWrap=document.getElementById('img-progress-wrap');
+
+function showOnly(t){{
+  elVideo.style.display   =t==='vid'?'block':'none';
+  elImg.style.display     =t==='img'?'block':'none';
+  elAudWrap.style.display =t==='aud'?'flex':'none';
+  elEmpty.style.display   =t===''?'block':'none';
+  elPbarWrap.style.display=t==='img'?'block':'none';
+  const navEls=document.querySelectorAll('.img-nav');
+  navEls.forEach(el=>el.style.display=t==='img'?'block':'none');
+}}
+showOnly('');
+
+document.getElementById('volume').addEventListener('input',e=>{{
+  elVideo.volume=elAudio.volume=parseFloat(e.target.value);
+}});
+elVideo.volume=elAudio.volume=0.8;
+
+function startPbar(){{
+  S.imgStart=performance.now();
+  const dur=S.slideshowSecs*1000;
+  function frame(now){{
+    const p=Math.min(100,(now-S.imgStart)/dur*100);
+    elPbar.style.width=p+'%';
+    if(p<100) S.imgRaf=requestAnimationFrame(frame);
+  }}
+  S.imgRaf=requestAnimationFrame(frame);
+}}
+function stopPbar(){{
+  if(S.imgRaf) cancelAnimationFrame(S.imgRaf);
+  elPbar.style.width='0%';
+}}
+
+async function playItem(idx){{
+  if(!S.playlist.length) return;
+  idx=((idx%S.playlist.length)+S.playlist.length)%S.playlist.length;
+  S.idx=idx;
+  if(S.imgTimer) clearTimeout(S.imgTimer);
+  stopPbar();
+  elVideo.pause(); elAudio.pause();
+  const item=S.playlist[idx];
+
+  document.getElementById('np-icon').textContent=ticon(item.t,item.n);
+  document.getElementById('np-name').textContent=item.n;
+  document.getElementById('np-meta').textContent=S.treePath.join(' › ');
+  document.getElementById('np-pos').textContent=`${{idx+1}} / ${{S.playlist.length}}`;
+  renderPlaylist();
+
+  elLoading.style.display='flex'; showOnly('');
+  try{{
+    const url=await resolveUrl(item);
+    elLoading.style.display='none';
+    if(item.t==='img'){{
+      elImg.src=url; showOnly('img'); startPbar();
+      if(S.autoplay) S.imgTimer=setTimeout(advance,S.slideshowSecs*1000);
+    }} else if(item.t==='vid'){{
+      elVideo.src=url; elVideo.load(); showOnly('vid'); elVideo.play().catch(()=>{{}});
+    }} else {{
+      elAudio.src=url; elAudio.load(); showOnly('aud'); elAudio.play().catch(()=>{{}});
+    }}
+    updateCtrl();
+  }} catch(e){{
+    elLoading.style.display='none';
+    elEmpty.style.display='block';
+    elEmpty.textContent='⚠️ '+e.message;
+  }}
+}}
+
+function advance(){{
+  if(!S.autoplay&&!S.loop) return;
+  let next=S.idx+1;
+  if(next>=S.playlist.length){{if(S.loop)next=0;else return;}}
+  if(S.shuffle&&S.playlist.length>1){{let r;do{{r=Math.floor(Math.random()*S.playlist.length);}}while(r===S.idx);next=r;}}
+  playItem(next);
+}}
+
+elVideo.addEventListener('ended',()=>{{if(S.autoplay||S.loop)advance();}});
+elAudio.addEventListener('ended',()=>{{if(S.autoplay||S.loop)advance();}});
+
+function selectFolder(pathArr){{
+  S.treePath=[...pathArr];
+  const node=TREE[ps(pathArr)]??{{dirs:{{}},files:[]}};
+  S.playlist=(node.files??[]).filter(f=>mtype(f.n)).map(f=>({{n:f.n,k:f.k,t:mtype(f.n)}}));
+  S.idx=-1; renderPlaylist();
+  showOnly('');
+  if(S.playlist.length){{
+    elEmpty.textContent='▶ Click a file in the playlist to play it.';
+    document.getElementById('np-name').textContent=pathArr[pathArr.length-1]||'Root';
+    document.getElementById('np-meta').textContent=pathArr.join(' › ');
+    document.getElementById('np-pos').textContent='';
+  }} else {{
+    elEmpty.textContent='📂 No media files in this folder. Try a subfolder.';
+    document.getElementById('np-name').textContent=pathArr[pathArr.length-1]||'Root';
+    document.getElementById('np-meta').textContent='';
+    document.getElementById('np-pos').textContent='';
+  }}
+  updateCtrl();
+}}
+
+function renderPlaylist(){{
+  const el=document.getElementById('pl-list');
+  const cnt=document.getElementById('pl-count');
+  if(!S.playlist.length){{
+    el.innerHTML='<div class="pl-empty">No media files in this folder.</div>';
+    cnt.textContent='No media files'; return;
+  }}
+  const by=S.playlist.reduce((a,f)=>{{a[f.t]=(a[f.t]||0)+1;return a;}},{{}});
+  cnt.textContent=S.playlist.length+' · '+Object.entries(by).map(([t,n])=>ticon(t)+' '+n).join(' ');
+  el.innerHTML='';
+  S.playlist.forEach((item,i)=>{{
+    const row=document.createElement('div');
+    row.className='pl-item'+(i===S.idx?' current':'');
+    row.innerHTML=`<span class="pl-idx">${{i+1}}</span><span class="pl-type">${{ticon(item.t,item.n)}}</span><span class="pl-name" title="${{esc(item.n)}}">${{esc(item.n)}}</span>`;
+    row.addEventListener('click',()=>playItem(i));
+    el.appendChild(row);
+  }});
+  const cur=el.querySelector('.current');
+  if(cur) cur.scrollIntoView({{block:'nearest'}});
+}}
+
+const btnPrev=document.getElementById('btn-prev');
+const btnPlay=document.getElementById('btn-play');
+const btnNext=document.getElementById('btn-next');
+const btnAuto=document.getElementById('btn-autoplay');
+const btnShuf=document.getElementById('btn-shuffle');
+const btnLoop=document.getElementById('btn-loop');
+
+btnPrev.addEventListener('click',()=>playItem(S.idx-1));
+btnNext.addEventListener('click',()=>playItem(S.idx+1));
+btnPlay.addEventListener('click',()=>{{
+  const item=S.playlist[S.idx]; if(!item) return;
+  if(item.t==='vid'){{elVideo.paused?elVideo.play():elVideo.pause();}}
+  else if(item.t==='aud'){{elAudio.paused?elAudio.play():elAudio.pause();}}
+  else if(item.t==='img'){{
+    if(S.imgTimer){{clearTimeout(S.imgTimer);S.imgTimer=null;stopPbar();}}
+    else{{startPbar();S.imgTimer=setTimeout(advance,S.slideshowSecs*1000);}}
+  }}
+}});
+btnAuto.addEventListener('click',()=>{{S.autoplay=!S.autoplay;btnAuto.classList.toggle('on',S.autoplay);}});
+btnShuf.addEventListener('click',()=>{{S.shuffle=!S.shuffle;btnShuf.classList.toggle('on',S.shuffle);}});
+btnLoop.addEventListener('click',()=>{{S.loop=!S.loop;btnLoop.classList.toggle('on',S.loop);}});
+document.getElementById('slideshow-speed').addEventListener('change',e=>{{S.slideshowSecs=parseInt(e.target.value);}});
+
+function updateCtrl(){{
+  const has=S.playlist.length>0;
+  btnPrev.disabled=!has; btnPlay.disabled=!has; btnNext.disabled=!has;
+}}
+
+function mkNode(parentPath,name,depth){{
+  const fullPath=parentPath?parentPath+'/'+name:name;
+  const node=TREE[fullPath]??{{dirs:{{}},files:[]}};
+  const hasKids=Object.keys(node.dirs).length>0;
+  const expanded=S.expanded.has(fullPath);
+  const isActive=ps(S.treePath)===fullPath;
+  const wrap=document.createElement('div');
+  const row=document.createElement('div');
+  row.className='tree-row'+(isActive?' active':'');
+  row.style.paddingLeft=(depth*14+6)+'px';
+  const arrow=document.createElement('span');
+  arrow.className='tree-arrow'+(hasKids?' vis':'');
+  arrow.textContent=hasKids?(expanded?'▾':'▸'):'';
+  const icon=document.createElement('span'); icon.className='tree-icon'; icon.textContent='📁';
+  const label=document.createElement('span'); label.className='tree-label'; label.textContent=name;
+  const pNode=TREE[parentPath]??TREE['']??{{dirs:{{}}}};
+  const info=(pNode.dirs??{{}})[name]??{{}};
+  const cnt=document.createElement('span'); cnt.className='tree-count';
+  cnt.textContent=info.c?info.c.toLocaleString():'';
+  row.appendChild(arrow); row.appendChild(icon); row.appendChild(label); row.appendChild(cnt);
+  row.addEventListener('click',()=>{{
+    if(hasKids){{S.expanded.has(fullPath)?S.expanded.delete(fullPath):S.expanded.add(fullPath);}}
+    const parts=fullPath.split('/');
+    for(let i=1;i<parts.length;i++) S.expanded.add(parts.slice(0,i).join('/'));
+    selectFolder(fullPath.split('/'));
+    renderTree();
+  }});
+  wrap.appendChild(row);
+  if(expanded&&hasKids) for(const k of sortedKeys(node.dirs)) wrap.appendChild(mkNode(fullPath,k,depth+1));
+  return wrap;
+}}
+
+function renderTree(){{
+  const el=document.getElementById('tree'); el.innerHTML='';
+  const root=TREE['']??{{dirs:{{}}}};
+  let keys=sortedKeys(root.dirs);
+  const q=S.folderFilter.toLowerCase();
+  if(q) keys=keys.filter(k=>k.toLowerCase().includes(q));
+  for(const k of keys) el.appendChild(mkNode('',k,0));
+}}
+
+document.getElementById('rail-search').addEventListener('input',e=>{{S.folderFilter=e.target.value;renderTree();}});
+
+// ── Lazy tree load ────────────────────────────────────────────────────────────
+const mpLoading = document.createElement('div');
+mpLoading.style.cssText = 'position:absolute;inset:0;background:#181818;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:1rem;z-index:9999;color:#555;font-size:.85rem';
+mpLoading.innerHTML = '<div style="font-size:2rem">☁️</div><div>Loading file index…</div>';
+document.getElementById('player-area').appendChild(mpLoading);
+
+fetch(`${{API}}/tree`)
+  .then(r => r.json())
+  .then(data => {{ TREE = data; mpLoading.remove(); renderTree(); }})
+  .catch(e => {{ mpLoading.innerHTML = `<div style="color:#f87171">⚠️ ${{e.message}}</div>`; }});
+
+// ── Image nav arrows ──────────────────────────────────────────────────────────
+function showImgNav(visible){{
+  const d=visible?'block':'none';
+  document.getElementById('img-prev').style.display=d;
+  document.getElementById('img-next').style.display=d;
+}}
+document.getElementById('img-prev').addEventListener('click',()=>{{
+  if(S.imgTimer){{clearTimeout(S.imgTimer);S.imgTimer=null;}}
+  stopPbar(); playItem(S.idx-1);
+}});
+document.getElementById('img-next').addEventListener('click',()=>{{
+  if(S.imgTimer){{clearTimeout(S.imgTimer);S.imgTimer=null;}}
+  stopPbar(); playItem(S.idx+1);
+}});
+document.addEventListener('keydown',e=>{{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='SELECT') return;
+  const item=S.playlist[S.idx];
+  if(e.key==='ArrowLeft'){{
+    if(S.imgTimer){{clearTimeout(S.imgTimer);S.imgTimer=null;}} stopPbar(); playItem(S.idx-1);
+  }} else if(e.key==='ArrowRight'){{
+    if(S.imgTimer){{clearTimeout(S.imgTimer);S.imgTimer=null;}} stopPbar(); playItem(S.idx+1);
+  }} else if(e.key===' '&&item){{
+    e.preventDefault();
+    if(item.t==='vid'){{elVideo.paused?elVideo.play():elVideo.pause();}}
+    else if(item.t==='aud'){{elAudio.paused?elAudio.play():elAudio.pause();}}
+  }}
+}});
+
+const handle=document.getElementById('resize'),rail=document.getElementById('rail');
+let drag=false,sx=0,sw=0;
+function startDrag(x){{drag=true;sx=x;sw=rail.offsetWidth;handle.classList.add('drag');document.body.style.cssText='cursor:col-resize;user-select:none';}}
+function moveDrag(x){{if(!drag)return;rail.style.width=Math.max(60,Math.min(480,sw+x-sx))+'px';}}
+function endDrag(){{drag=false;handle.classList.remove('drag');document.body.style.cssText='';}}
+handle.addEventListener('mousedown',e=>{{startDrag(e.clientX);e.preventDefault();}});
+document.addEventListener('mousemove',e=>moveDrag(e.clientX));
+document.addEventListener('mouseup',endDrag);
+handle.addEventListener('touchstart',e=>{{startDrag(e.touches[0].clientX);e.preventDefault();}},{{passive:false}});
+document.addEventListener('touchmove',e=>{{if(drag){{moveDrag(e.touches[0].clientX);e.preventDefault();}}}},{{passive:false}});
+document.addEventListener('touchend',endDrag);
+
+renderTree();
+</script>
+</body>
+</html>"""
+    components.html(PLAYER_HTML, height=720, scrolling=False)
 
 # ── Sync Log ──────────────────────────────────────────────────────────────────
 
