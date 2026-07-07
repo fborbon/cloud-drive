@@ -858,7 +858,8 @@ const S = {{
   slideshowSecs:5,imgTimer:null,imgRaf:null,imgStart:null
 }};
 
-function isWma(name){{return name.toLowerCase().endsWith('.wma');}}
+const TRANSCODE_EXT=new Set(['wma','m4a']);
+function needsTranscode(name){{return TRANSCODE_EXT.has(name.split('.').pop().toLowerCase());}}
 
 async function presign(key){{
   const r=await fetch(`${{API}}/presign?key=${{encodeURIComponent(key)}}`);
@@ -868,7 +869,7 @@ async function presign(key){{
 }}
 
 async function resolveUrl(item){{
-  if(isWma(item.n)) return `${{API}}/transcode?key=${{encodeURIComponent(item.k)}}`;
+  if(needsTranscode(item.n)) return `${{API}}/transcode?key=${{encodeURIComponent(item.k)}}`;
   return presign(item.k);
 }}
 
