@@ -717,7 +717,7 @@ html,body{{height:100%;overflow:hidden}}
 body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px}}
 
 /* ── Top browser panel ──────────────────────────────── */
-#browser{{display:flex;flex-direction:row;height:45%;min-height:60px;flex-shrink:0;overflow:hidden}}
+#browser{{display:flex;flex-direction:row;height:260px;min-height:60px;flex-shrink:0;overflow:hidden}}
 
 #rail{{width:240px;min-width:100px;max-width:480px;background:#101010;border-right:1px solid #1c1c1c;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}}
 #rail-header{{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:#f97316;padding:.7rem .8rem .3rem;font-weight:700;flex-shrink:0}}
@@ -1222,32 +1222,39 @@ document.addEventListener('touchmove',e=>{{
 document.addEventListener('touchend',()=>{{endVDrag();endHDrag();}});
 
 renderTree();
+
 function fitToViewport() {{
   try {{
-    const pWin=window.parent;
-    const pDoc=pWin.document;
+    const pWin = window.parent;
+    const pDoc = pWin.document;
+
     // Suppress Streamlit page scroll
-    const main=pDoc.querySelector('[data-testid="stMain"]');
-    if(main) main.style.overflow='hidden';
-    const bc=pDoc.querySelector('.block-container');
-    if(bc) bc.style.paddingBottom='0';
-    // Resize iframe
-    const el=window.frameElement;
-    if(!el) return;
-    const rect=el.getBoundingClientRect();
-    // Use scrollY-adjusted top so result is correct even if page was scrolled
-    const docTop=rect.top+pWin.scrollY;
-    const newH=Math.max(300,pWin.innerHeight-docTop-2);
-    el.style.height=newH+'px';
-    if(el.parentElement) el.parentElement.style.height=newH+'px';
+    const stMain = pDoc.querySelector('[data-testid="stMain"]');
+    if (stMain) stMain.style.overflow = 'hidden';
+    const bc = pDoc.querySelector('.block-container');
+    if (bc) {{ bc.style.paddingBottom = '0'; bc.style.overflow = 'hidden'; }}
+
+    // Find our iframe in the parent DOM — works even when frameElement is null (iOS Safari)
+    let el = window.frameElement;
+    if (!el) {{
+      const all = pDoc.querySelectorAll('iframe');
+      for (const f of all) {{ try {{ if (f.contentWindow === window) {{ el = f; break; }} }} catch(e) {{}} }}
+    }}
+    if (!el) return;
+
+    const rect = el.getBoundingClientRect();
+    const docTop = rect.top + pWin.scrollY;
+    const newH = Math.max(300, pWin.innerHeight - docTop - 2);
+    el.style.height = newH + 'px';
+    if (el.parentElement) el.parentElement.style.height = newH + 'px';
   }} catch(e) {{}}
 }}
 fitToViewport();
-window.parent.addEventListener('resize',fitToViewport);
+window.parent.addEventListener('resize', fitToViewport);
 </script>
 </body>
 </html>"""
-    components.html(PLAYER_HTML, height=2000, scrolling=False)
+    components.html(PLAYER_HTML, height=720, scrolling=False)
 
 # ── Sync Log ──────────────────────────────────────────────────────────────────
 
