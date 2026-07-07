@@ -697,14 +697,7 @@ render();
 
 with tab_media:
     st.markdown("""<style>
-/* Prevent Streamlit page from scrolling on the Media tab */
-[data-testid="stMain"]{overflow:hidden!important}
-.block-container{padding-bottom:0!important;overflow:hidden!important}
-/* Stretch the component iframe to fill remaining viewport */
-[data-testid="stMain"] iframe{
-  height:calc(100dvh - 120px)!important;
-  min-height:300px!important;
-}
+.block-container{padding-bottom:0!important}
 </style>""", unsafe_allow_html=True)
 
     PLAYER_HTML = f"""<!DOCTYPE html>
@@ -717,7 +710,7 @@ html,body{{height:100%;overflow:hidden}}
 body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px}}
 
 /* ── Top browser panel ──────────────────────────────── */
-#browser{{display:flex;flex-direction:row;height:260px;min-height:60px;flex-shrink:0;overflow:hidden}}
+#browser{{display:flex;flex-direction:row;height:200px;min-height:60px;flex-shrink:0;overflow:hidden}}
 
 #rail{{width:240px;min-width:100px;max-width:480px;background:#101010;border-right:1px solid #1c1c1c;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}}
 #rail-header{{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:#f97316;padding:.7rem .8rem .3rem;font-weight:700;flex-shrink:0}}
@@ -1228,25 +1221,25 @@ function fitToViewport() {{
     const pWin = window.parent;
     const pDoc = pWin.document;
 
-    // Suppress Streamlit page scroll
-    const stMain = pDoc.querySelector('[data-testid="stMain"]');
-    if (stMain) stMain.style.overflow = 'hidden';
-    const bc = pDoc.querySelector('.block-container');
-    if (bc) {{ bc.style.paddingBottom = '0'; bc.style.overflow = 'hidden'; }}
-
-    // Find our iframe in the parent DOM — works even when frameElement is null (iOS Safari)
+    // Find our iframe — works even when frameElement is null (iOS Safari security policy)
     let el = window.frameElement;
     if (!el) {{
       const all = pDoc.querySelectorAll('iframe');
       for (const f of all) {{ try {{ if (f.contentWindow === window) {{ el = f; break; }} }} catch(e) {{}} }}
     }}
-    if (!el) return;
+    if (!el) return; // can't resize → leave height=500 and let user scroll as fallback
 
     const rect = el.getBoundingClientRect();
     const docTop = rect.top + pWin.scrollY;
-    const newH = Math.max(300, pWin.innerHeight - docTop - 2);
+    const newH = Math.max(300, pWin.innerHeight - docTop - 4);
     el.style.height = newH + 'px';
     if (el.parentElement) el.parentElement.style.height = newH + 'px';
+
+    // Only suppress scroll AFTER we've successfully resized the iframe
+    const stMain = pDoc.querySelector('[data-testid="stMain"]');
+    if (stMain) stMain.style.overflow = 'hidden';
+    const bc = pDoc.querySelector('.block-container');
+    if (bc) bc.style.overflow = 'hidden';
   }} catch(e) {{}}
 }}
 fitToViewport();
@@ -1254,7 +1247,7 @@ window.parent.addEventListener('resize', fitToViewport);
 </script>
 </body>
 </html>"""
-    components.html(PLAYER_HTML, height=720, scrolling=False)
+    components.html(PLAYER_HTML, height=500, scrolling=False)
 
 # ── Sync Log ──────────────────────────────────────────────────────────────────
 
