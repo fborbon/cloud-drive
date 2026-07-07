@@ -84,7 +84,7 @@ input:focus{border-color:#4fa8d8}
 <div class="card">
   <h1>☁️ Cloud Drive</h1>
   <p>Sign in to access your backup</p>
-  <form method="post" autocomplete="off" id="loginForm">
+  <form method="post" action="/cloud-api/login" autocomplete="off" id="loginForm">
     <label>Username</label>
     <input type="text" name="username" id="usr" autocomplete="off"
            placeholder="username" value="{{ prefill }}"
