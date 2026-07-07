@@ -163,6 +163,15 @@ with tab_overview:
         folders = []
 
     st.header("Backup Overview")
+    st.markdown(
+        '<a href="/cloud-api/logout" style="display:none" id="_mob-logout"></a>'
+        '<style>@media(max-width:768px){#_mob-logout{'
+        'display:inline-block!important;padding:.45rem 1.2rem;'
+        'background:transparent;border:1px solid #555;border-radius:6px;'
+        'color:#888;text-decoration:none;font-size:.82rem;margin-bottom:1rem}}</style>'
+        '🚪 <a href="/cloud-api/logout" id="_mob-logout">Log out</a>',
+        unsafe_allow_html=True,
+    )
     c1, c2, c3, c4 = st.columns(4)
     c1.metric("Files Backed Up", f"{stats['count']:,}")
     c2.metric("Total Size", _human(stats["total_bytes"]))
