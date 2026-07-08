@@ -1234,12 +1234,6 @@ function fitToViewport() {{
     const newH = Math.max(300, pWin.innerHeight - docTop - 4);
     el.style.height = newH + 'px';
     if (el.parentElement) el.parentElement.style.height = newH + 'px';
-
-    // Only suppress scroll AFTER we've successfully resized the iframe
-    const stMain = pDoc.querySelector('[data-testid="stMain"]');
-    if (stMain) stMain.style.overflow = 'hidden';
-    const bc = pDoc.querySelector('.block-container');
-    if (bc) bc.style.overflow = 'hidden';
   }} catch(e) {{}}
 }}
 fitToViewport();
