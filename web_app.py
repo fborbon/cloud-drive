@@ -706,11 +706,11 @@ with tab_media:
 <meta charset="utf-8">
 <style>
 *,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
-html{{overflow-x:hidden}}
-body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;padding-top:42px}}
+html,body{{height:100%;overflow:hidden}}
+body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px}}
 
 /* ── Top browser panel ──────────────────────────────── */
-#browser{{display:flex;flex-direction:row;height:260px;overflow:hidden}}
+#browser{{display:flex;flex-direction:row;height:200px;flex-shrink:0;overflow:hidden}}
 
 #rail{{width:240px;min-width:100px;max-width:480px;background:#101010;border-right:1px solid #1c1c1c;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}}
 #rail-header{{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:#f97316;padding:.7rem .8rem .3rem;font-weight:700;flex-shrink:0}}
@@ -751,7 +751,7 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
 #h-resize:hover,#h-resize.drag{{background:#f97316}}
 
 /* ── Bottom player panel ────────────────────────────── */
-#main{{display:flex;flex-direction:column;overflow:hidden}}
+#main{{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}}
 
 #now-playing{{padding:.45rem .8rem;border-bottom:1px solid #1c1c1c;flex-shrink:0;display:flex;align-items:center;gap:.6rem;min-height:38px;overflow:hidden}}
 #np-icon{{font-size:1rem;flex-shrink:0}}
@@ -767,7 +767,7 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
 #time-cur,#time-dur{{font-size:.65rem;color:#555;font-family:ui-monospace,monospace;white-space:nowrap;flex-shrink:0;min-width:2.8rem}}
 #time-dur{{text-align:right}}
 
-#player-area{{height:280px;display:flex;align-items:center;justify-content:center;background:#0d0d0d;overflow:hidden;position:relative}}
+#player-area{{flex:1;display:flex;align-items:center;justify-content:center;background:#0d0d0d;overflow:hidden;position:relative;min-height:0}}
 #player-video{{max-width:100%;max-height:100%;display:none;outline:none}}
 #player-img{{max-width:100%;max-height:100%;object-fit:contain;display:none}}
 #player-audio-wrap{{display:none;flex-direction:column;align-items:center;gap:1rem;padding:1.5rem 2rem}}
@@ -785,7 +785,7 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
 #img-prev{{left:.6rem}}
 #img-next{{right:.6rem}}
 
-#controls{{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;gap:.35rem;padding:.35rem .5rem;background:#1a1a1a;border-bottom:2px solid #2a2a2a;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;height:42px;box-sizing:border-box}}
+#controls{{display:flex;align-items:center;gap:.35rem;padding:.35rem .5rem;background:#222;border-bottom:2px solid #333;flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;min-height:42px}}
 #controls::-webkit-scrollbar{{display:none}}
 .ctrl-btn{{background:#2a2a2a;border:1px solid #3a3a3a;color:#ccc;padding:.25rem .55rem;border-radius:4px;cursor:pointer;font-size:.82rem;transition:all .15s;white-space:nowrap;flex-shrink:0;line-height:1.4}}
 .ctrl-btn:hover{{background:#383838;color:#fff}}
@@ -1221,19 +1221,23 @@ function fitToViewport() {{
     const pWin = window.parent;
     const pDoc = pWin.document;
 
-    // Find our iframe — works even when frameElement is null (iOS Safari security policy)
+    // Find our iframe
     let el = window.frameElement;
     if (!el) {{
       const all = pDoc.querySelectorAll('iframe');
       for (const f of all) {{ try {{ if (f.contentWindow === window) {{ el = f; break; }} }} catch(e) {{}} }}
     }}
-    if (!el) return; // can't resize → leave height=500 and let user scroll as fallback
+    if (!el) return;
 
+    // Resize iframe to fill from its top to the bottom of the viewport
     const rect = el.getBoundingClientRect();
     const docTop = rect.top + pWin.scrollY;
     const newH = Math.max(300, pWin.innerHeight - docTop - 4);
     el.style.height = newH + 'px';
     if (el.parentElement) el.parentElement.style.height = newH + 'px';
+
+    // Scroll parent so the top of the iframe is just below Streamlit's header
+    pWin.scrollTo({{top: Math.max(0, docTop - 4), behavior: 'instant'}});
   }} catch(e) {{}}
 }}
 fitToViewport();
@@ -1241,7 +1245,7 @@ window.parent.addEventListener('resize', fitToViewport);
 </script>
 </body>
 </html>"""
-    components.html(PLAYER_HTML, height=700, scrolling=True)
+    components.html(PLAYER_HTML, height=500, scrolling=False)
 
 # ── Sync Log ──────────────────────────────────────────────────────────────────
 
