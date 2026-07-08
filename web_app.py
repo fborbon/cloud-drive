@@ -707,7 +707,7 @@ with tab_media:
 <style>
 *,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
 html,body{{height:100%;overflow:hidden}}
-body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px}}
+body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;padding-top:42px}}
 
 /* ── Top browser panel ──────────────────────────────── */
 #browser{{display:flex;flex-direction:row;height:200px;min-height:60px;flex-shrink:0;overflow:hidden}}
@@ -785,12 +785,12 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
 #img-prev{{left:.6rem}}
 #img-next{{right:.6rem}}
 
-#controls{{display:flex;align-items:center;gap:.35rem;padding:.35rem .5rem;border-bottom:1px solid #1c1c1c;flex-shrink:0;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch}}
+#controls{{position:fixed;top:0;left:0;right:0;z-index:100;display:flex;align-items:center;gap:.35rem;padding:.35rem .5rem;background:#1a1a1a;border-bottom:2px solid #2a2a2a;flex-wrap:nowrap;overflow-x:auto;-webkit-overflow-scrolling:touch;height:42px;box-sizing:border-box}}
 #controls::-webkit-scrollbar{{display:none}}
-.ctrl-btn{{background:#1e1e1e;border:1px solid #2a2a2a;color:#aaa;padding:.25rem .5rem;border-radius:4px;cursor:pointer;font-size:.78rem;transition:all .15s;white-space:nowrap;flex-shrink:0}}
-.ctrl-btn:hover{{background:#282828;color:#eee}}
-.ctrl-btn.on{{background:rgba(249,115,22,.15);border-color:#f97316;color:#f97316}}
-.ctrl-btn:disabled{{opacity:.3;cursor:default}}
+.ctrl-btn{{background:#2a2a2a;border:1px solid #3a3a3a;color:#ccc;padding:.25rem .55rem;border-radius:4px;cursor:pointer;font-size:.82rem;transition:all .15s;white-space:nowrap;flex-shrink:0;line-height:1.4}}
+.ctrl-btn:hover{{background:#383838;color:#fff}}
+.ctrl-btn.on{{background:rgba(249,115,22,.25);border-color:#f97316;color:#f97316}}
+.ctrl-btn:disabled{{opacity:.55;cursor:default}}
 .ctrl-sep{{width:1px;height:16px;background:#252525;flex-shrink:0}}
 .ctrl-lbl{{font-size:.65rem;color:#444;flex-shrink:0}}
 #volume-wrap{{display:flex;align-items:center;gap:.35rem;margin-left:auto;flex-shrink:0}}
