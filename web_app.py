@@ -706,11 +706,11 @@ with tab_media:
 <meta charset="utf-8">
 <style>
 *,*::before,*::after{{box-sizing:border-box;margin:0;padding:0}}
-html,body{{height:100%;overflow:hidden}}
+html{{overflow-x:hidden}}
 body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;padding-top:42px}}
 
 /* ── Top browser panel ──────────────────────────────── */
-#browser{{display:flex;flex-direction:row;height:200px;min-height:60px;flex-shrink:0;overflow:hidden}}
+#browser{{display:flex;flex-direction:row;height:260px;overflow:hidden}}
 
 #rail{{width:240px;min-width:100px;max-width:480px;background:#101010;border-right:1px solid #1c1c1c;display:flex;flex-direction:column;flex-shrink:0;overflow:hidden}}
 #rail-header{{font-size:.6rem;text-transform:uppercase;letter-spacing:.12em;color:#f97316;padding:.7rem .8rem .3rem;font-weight:700;flex-shrink:0}}
@@ -751,7 +751,7 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
 #h-resize:hover,#h-resize.drag{{background:#f97316}}
 
 /* ── Bottom player panel ────────────────────────────── */
-#main{{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}}
+#main{{display:flex;flex-direction:column;overflow:hidden}}
 
 #now-playing{{padding:.45rem .8rem;border-bottom:1px solid #1c1c1c;flex-shrink:0;display:flex;align-items:center;gap:.6rem;min-height:38px;overflow:hidden}}
 #np-icon{{font-size:1rem;flex-shrink:0}}
@@ -767,7 +767,7 @@ body{{display:flex;flex-direction:column;background:#181818;color:#ccc;font-fami
 #time-cur,#time-dur{{font-size:.65rem;color:#555;font-family:ui-monospace,monospace;white-space:nowrap;flex-shrink:0;min-width:2.8rem}}
 #time-dur{{text-align:right}}
 
-#player-area{{flex:1;display:flex;align-items:center;justify-content:center;background:#0d0d0d;overflow:hidden;position:relative;min-height:0;min-width:0}}
+#player-area{{height:280px;display:flex;align-items:center;justify-content:center;background:#0d0d0d;overflow:hidden;position:relative}}
 #player-video{{max-width:100%;max-height:100%;display:none;outline:none}}
 #player-img{{max-width:100%;max-height:100%;object-fit:contain;display:none}}
 #player-audio-wrap{{display:none;flex-direction:column;align-items:center;gap:1rem;padding:1.5rem 2rem}}
@@ -1247,7 +1247,7 @@ window.parent.addEventListener('resize', fitToViewport);
 </script>
 </body>
 </html>"""
-    components.html(PLAYER_HTML, height=500, scrolling=False)
+    components.html(PLAYER_HTML, height=700, scrolling=True)
 
 # ── Sync Log ──────────────────────────────────────────────────────────────────
 
