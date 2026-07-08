@@ -16,6 +16,17 @@ st.set_page_config(page_title="Cloud Drive", page_icon="☁️", layout="wide")
 
 st.markdown("""
 <style>
+/* Hide Streamlit chrome */
+#MainMenu { display: none !important; }
+header[data-testid="stHeader"] { display: none !important; }
+footer { display: none !important; }
+div[data-testid="stDecoration"] { display: none !important; }
+div[data-testid="stToolbar"] { display: none !important; }
+
+/* Pull tabs all the way up */
+.block-container { padding-top: 0.5rem !important; padding-bottom: 0 !important; }
+div[data-testid="stTabs"] { margin-top: 0 !important; }
+
 @media (max-width: 768px) {
     section[data-testid="stSidebar"],
     div[data-testid="stSidebarCollapsedControl"] { display: none !important; }
